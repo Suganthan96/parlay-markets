@@ -14,9 +14,12 @@ export interface Market {
 
 export interface ParlayLeg {
   marketId: string;
-  marketLabel: string; // "CSK beats MI"
+  marketLabel: string;
   outcome: string;
   price: number;
+  // On-chain fields (populated when added from real markets page)
+  marketAddress?: `0x${string}`;
+  outcomeIdx?: number; // 0=Home, 1=Away
 }
 
 export interface Ticket {
