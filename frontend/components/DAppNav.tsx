@@ -80,8 +80,9 @@ function WalletButton() {
 }
 
 export function DAppNav() {
-  const path    = usePathname();
-  const legCount = useParlayStore(s => s.legs.length);
+  const path      = usePathname();
+  const legCount  = useParlayStore(s => s.legs.length);
+  const ticketMetaCount = useParlayStore(s => Object.keys(s.ticketMeta).length);
 
   return (
     <header className="sticky top-0 z-50 bg-white" style={{ borderBottom: '1px solid var(--border)' }}>
@@ -130,6 +131,11 @@ export function DAppNav() {
                 {n.href === '/parlay' && legCount > 0 && (
                   <span style={{ marginLeft: 6, background: 'var(--mint)', color: 'var(--black)', fontSize: 9, fontWeight: 800, padding: '1px 5px', borderRadius: 2 }}>
                     {legCount}
+                  </span>
+                )}
+                {n.href === '/tickets' && ticketMetaCount > 0 && (
+                  <span style={{ marginLeft: 6, background: '#6366f1', color: '#fff', fontSize: 9, fontWeight: 800, padding: '1px 5px', borderRadius: 2 }}>
+                    {ticketMetaCount}
                   </span>
                 )}
               </Link>
