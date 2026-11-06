@@ -20,7 +20,7 @@ const OUTCOME_LABELS = ['HOME WIN', 'AWAY WIN', 'DRAW'];
 
 // ── Leg row ───────────────────────────────────────────────────────────────────
 
-function LegRow({ ticketId, legIdx }: { ticketId: bigint; legIdx: number }) {
+function LegRow({ ticketId, legIdx, ticketWon, ticketLost }: { ticketId: bigint; legIdx: number; ticketWon?: boolean; ticketLost?: boolean }) {
   const ticketMeta = useParlayStore(s => s.ticketMeta);
   const storedLeg  = ticketMeta[ticketId.toString()]?.legs[legIdx];
 
@@ -47,9 +47,15 @@ function LegRow({ ticketId, legIdx }: { ticketId: bigint; legIdx: number }) {
   const awayTeam     = names?.[1]?.result as string | undefined;
   const marketResult = Number(names?.[2]?.result ?? 0); // 0=unresolved, 1=home, 2=away, 3=draw
 
-  // Leg win/loss: result 0 = unresolved (live), else result-1 = winning outcome index
+  // Leg win/loss: derive from ticket settlement first, then market result
   let legStatus: 'live' | 'won' | 'lost' = 'live';
-  if (marketResult !== 0 && outcomeIdx !== undefined) {
+  if (ticketWon) {
+    legStatus = 'won'; // ticket won = all legs won
+  } else if (ticketLost && marketResult !== 0 && outcomeIdx !== undefined) {
+    legStatus = (marketResult - 1) === outcomeIdx ? 'won' : 'lost';
+  } else if (ticketLost) {
+    legStatus = 'lost'; // ticket lost but can't pinpoint which leg — mark all lost
+  } else if (marketResult !== 0 && outcomeIdx !== undefined) {
     legStatus = (marketResult - 1) === outcomeIdx ? 'won' : 'lost';
   }
 
@@ -153,7 +159,7 @@ function TicketCard({ ticketId }: { ticketId: bigint }) {
       {/* Legs */}
       <div>
         {Array.from({ length: legCount }, (_, i) => (
-          <LegRow key={i} ticketId={ticketId} legIdx={i} />
+          <LegRow key={i} ticketId={ticketId} legIdx={i} ticketWon={isWon} ticketLost={isLost} />
         ))}
         {legCount === 0 && (
           <div style={{ padding: '20px', color: '#bbb', fontSize: 10 }}>LOADING LEGS…</div>
