@@ -217,7 +217,7 @@ function TicketCard({ ticketId }: { ticketId: bigint }) {
             )}
             {wasSettledNotWon && (
               <div style={{ flex: 1, padding: '13px', background: '#fafafa', textAlign: 'center' }}>
-                <span className="text-label" style={{ fontSize: 10, color: '#888' }}>↩ ALREADY SETTLED — CASHED OUT OR CLAIMED</span>
+                <span className="text-label" style={{ fontSize: 10, color: '#888' }}>↩ ALREADY SETTLED — FUNDS WERE PREVIOUSLY WITHDRAWN</span>
               </div>
             )}
           </div>
@@ -258,7 +258,7 @@ export default function TicketsPage() {
   return (
     <div style={{ maxWidth: 1440, margin: '0 auto', borderLeft: '1px solid var(--border)', borderRight: '1px solid var(--border)' }}>
       <div style={{ background: 'var(--black)', padding: 'clamp(32px,5vw,72px) clamp(24px,4vw,56px)', borderBottom: '1px solid var(--border)' }}>
-        <p className="text-label" style={{ color: '#555', marginBottom: 16, fontSize: 10 }}>■ MY TICKETS · PARLAYVAULT ON-CHAIN</p>
+        <p className="text-label" style={{ color: '#555', marginBottom: 16, fontSize: 10 }}>■ MY TICKETS · PARLAYVAULT ON-CHAIN · AUTO-REFRESHES EVERY 15s</p>
         <h1 className="text-display" style={{ color: 'var(--white)', fontSize: 'clamp(56px,9vw,140px)' }}>CASH OUT<br/>LIVE.</h1>
       </div>
 
