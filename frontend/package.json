@@ -9,7 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "next": "15.0.3",
+    "next": "15.5.29",
     "react": "^19",
     "react-dom": "^19",
     "wagmi": "^2.12.21",
@@ -28,6 +28,6 @@
     "postcss": "^8",
     "autoprefixer": "^10.0.1",
     "eslint": "^8",
-    "eslint-config-next": "15.0.3"
+    "eslint-config-next": "15.5.29"
   }
 }
