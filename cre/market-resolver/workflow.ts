@@ -23,6 +23,7 @@ import {
   median,
   ignore,
   TxStatus,
+  hexToBase64,
   type EVMLog,
   type Runtime,
   type Workflow,
@@ -79,11 +80,11 @@ export default function initWorkflow(
   // ── Log trigger: watch for SettlementRequested events ─────────────────────
 
   const settlementTrigger = evmClient.logTrigger({
-    addresses: [marketResolverAddress],
+    addresses: [hexToBase64(marketResolverAddress)],
     topics: [
-      { values: [SETTLEMENT_REQUESTED_SIG] },   // topic[0]: event signature
-      {},                                         // topic[1]: matchId (any)
-      {},                                         // topic[2]: market address (any)
+      { values: [hexToBase64(SETTLEMENT_REQUESTED_SIG)] },   // topic[0]: event signature
+      {},                                                      // topic[1]: matchId (any)
+      {},                                                      // topic[2]: market address (any)
     ],
   })
 
