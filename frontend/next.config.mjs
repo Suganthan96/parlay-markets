@@ -7,12 +7,17 @@ const nextConfig = {
     // connector at all — only injected() — so stub out the entire sdk and its deps.
     config.resolve.alias = {
       ...config.resolve.alias,
-      '@coinbase/cdp-sdk':      false,
-      '@base-org/account':      false,
-      '@x402/core/client':      false,
-      '@x402/evm/exact/client': false,
-      '@x402/evm/upto/client':  false,
-      '@x402/svm/exact/client': false,
+      // Coinbase / Base Account optional deps
+      '@coinbase/cdp-sdk':                        false,
+      '@base-org/account':                        false,
+      '@x402/core/client':                        false,
+      '@x402/evm/exact/client':                   false,
+      '@x402/evm/upto/client':                    false,
+      '@x402/svm/exact/client':                   false,
+      // MetaMask SDK optional React Native dep
+      '@react-native-async-storage/async-storage': false,
+      // WalletConnect optional pretty logger
+      'pino-pretty':                              false,
     };
     return config;
   },
