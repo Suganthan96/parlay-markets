@@ -1,10 +1,12 @@
 /**
- * CRE workflow entrypoint.
- * The CRE CLI loads this file; it must export a default function that calls initWorkflow.
+ * CRE workflow entrypoint — Parlay Markets Market Resolver
+ *
+ * Runner loads config, secrets, and executes the workflow.
  */
-import * as cre from "@chainlink/cre-sdk"
-import initWorkflow from "./workflow.js"
+import { Runner } from "@chainlink/cre-sdk"
+import initWorkflow, { type Config } from "./workflow.js"
 
-export default function (runtime: cre.Runtime, config: unknown) {
-  return initWorkflow(runtime, config as Parameters<typeof initWorkflow>[1])
+export async function main() {
+  const runner = await Runner.newRunner<Config>()
+  await runner.run(initWorkflow)
 }
