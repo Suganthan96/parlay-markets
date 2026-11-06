@@ -61,7 +61,7 @@ export default function Header() {
           <div className="flex items-center gap-4">
             <div className="toggle" aria-label="Toggle theme" />
             <a
-              href="#how-it-works"
+              href="/markets"
               className="flex items-center gap-2 text-sm font-semibold tracking-wide"
             >
               Launch App
@@ -105,7 +105,7 @@ export default function Header() {
             </a>
           ))}
           <a
-            href="#how-it-works"
+            href="/markets"
             onClick={() => setMenuOpen(false)}
             className="px-5 py-4 text-sm font-semibold flex items-center gap-2"
           >
