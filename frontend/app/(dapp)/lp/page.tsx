@@ -14,7 +14,8 @@ import {
   useRequestSettlement, useSetCRE, useReadCRE,
 } from '@/lib/hooks';
 import { CRE_FORWARDER_ADDRESS } from '@/lib/contracts';
-import { TxLink } from '@/components/ui/TxLink';
+import { TxLink, AddrLink } from '@/components/ui/TxLink';
+import { MOCK_USDC_ADDRESS } from '@/lib/contracts';
 
 // ── Step indicator ────────────────────────────────────────────────────────────
 
@@ -78,10 +79,11 @@ function LpShipWizard() {
   const [reserveAmount, setReserveAmount] = useState('500');
   const [selectedMkt,   setSelectedMkt]   = useState(MARKET_ADDRESSES[0] ?? '');
   const [aquaShipped,   setAquaShipped]   = useState(false);
+  const [shipTxHash,    setShipTxHash]    = useState<`0x${string}` | undefined>();
 
   const { ship,         isPending: isShipping  } = useShipLiquidity(selectedMkt as `0x${string}`);
   const { approveAqua,  isPending: isApproving } = useApproveAqua();
-  const { lpShipAqua,   isPending: isShippingAqua, isSuccess: aquaShipSuccess } = useLpShipAqua();
+  const { lpShipAqua,   isPending: isShippingAqua, isSuccess: aquaShipSuccess, txHash: aquaTxHash } = useLpShipAqua();
   const { requestSettlement } = useRequestSettlement();
 
   const aquaAllowance = useAquaAllowance(address);
@@ -109,7 +111,8 @@ function LpShipWizard() {
 
   async function handleShipAqua() {
     const markets = MARKET_ADDRESSES.length > 0 ? MARKET_ADDRESSES : [selectedMkt as `0x${string}`];
-    await lpShipAqua(markets as `0x${string}`[], reserveRaw);
+    const hash = await lpShipAqua(markets as `0x${string}`[], reserveRaw);
+    if (hash) setShipTxHash(hash as `0x${string}`);
     setAquaShipped(true);
   }
 
@@ -214,11 +217,40 @@ function LpShipWizard() {
               <div style={{ fontWeight: 800, fontSize: 18, marginBottom: 8 }}>Virtual liquidity active</div>
               <div style={{ fontSize: 12, lineHeight: 1.6 }}>Your USDC is still in your wallet. When users buy parlays through AquaParlayRouter, Aqua calls <code>transferFrom(you)</code> only on payouts.</div>
             </div>
-            <div style={{ background: '#f5f5f5', padding: '16px', fontFamily: 'monospace', fontSize: 10, marginBottom: 20, lineHeight: 2 }}>
-              <div><span style={{ color: '#888' }}>Aqua allowance (on-chain):</span> {Number(formatUnits(aquaAllowance, 6)).toFixed(2)} USDC ✓</div>
-              <div><span style={{ color: '#888' }}>Strategy hash:</span> {DEFAULT_STRATEGY_HASH}</div>
-              <div><span style={{ color: '#888' }}>Aqua router:</span> {AQUA_PARLAY_ROUTER_ADDRESS}</div>
-              <div><span style={{ color: '#888' }}>LP wallet:</span> {address}</div>
+            <div style={{ background: '#f5f5f5', padding: '16px', fontFamily: 'monospace', fontSize: 10, marginBottom: 20, lineHeight: 2.2 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ color: '#888' }}>Aqua allowance (on-chain)</span>
+                <span style={{ fontWeight: 700, color: 'var(--black)' }}>{Number(formatUnits(aquaAllowance, 6)).toFixed(2)} USDC ✓</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ color: '#888' }}>Strategy hash</span>
+                <span style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                  <span style={{ fontSize: 9 }}>{DEFAULT_STRATEGY_HASH.slice(0, 10)}…{DEFAULT_STRATEGY_HASH.slice(-6)}</span>
+                  <AddrLink address={AQUA_PARLAY_ROUTER_ADDRESS} label="view on Etherscan ↗" />
+                </span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ color: '#888' }}>Pool contract (AquaParlayRouter)</span>
+                <AddrLink address={AQUA_PARLAY_ROUTER_ADDRESS} />
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ color: '#888' }}>1inch Aqua (liquidity layer)</span>
+                <AddrLink address={AQUA_ADDRESS} />
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ color: '#888' }}>Pool token (USDC)</span>
+                <AddrLink address={MOCK_USDC_ADDRESS} label={`${MOCK_USDC_ADDRESS.slice(0, 6)}…${MOCK_USDC_ADDRESS.slice(-4)} ↗`} />
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ color: '#888' }}>LP wallet</span>
+                <AddrLink address={address ?? '0x0'} label={`${(address ?? '').slice(0, 6)}…${(address ?? '').slice(-4)}`} />
+              </div>
+              {(shipTxHash ?? aquaTxHash) && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ color: '#888' }}>Ship tx</span>
+                  <TxLink hash={(shipTxHash ?? aquaTxHash) as string} />
+                </div>
+              )}
             </div>
           </>
         )}
