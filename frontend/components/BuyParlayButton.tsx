@@ -3,6 +3,8 @@
 import { useState } from 'react';
 import { useAccount } from 'wagmi';
 import { parseUnits } from 'viem';
+import { useChainId, useSwitchChain } from 'wagmi';
+import { sepolia } from 'wagmi/chains';
 import { useApproveUsdc, useBuyParlayViaAqua, useUsdcAllowance } from '@/lib/hooks';
 import { AQUA_PARLAY_ROUTER_ADDRESS, DEFAULT_STRATEGY_HASH } from '@/lib/contracts';
 
@@ -35,6 +37,8 @@ export default function BuyParlayButton({
   legsMeta, onSuccess,
 }: Props) {
   const { address, isConnected } = useAccount();
+  const chainId                  = useChainId();
+  const { switchChainAsync }     = useSwitchChain();
   const [approving,   setApproving]   = useState(false);
   const [approveTx,   setApproveTx]   = useState('');
   const [buyTx,       setBuyTx]       = useState('');
@@ -53,6 +57,10 @@ export default function BuyParlayButton({
     if (disabled) return;
     setErrorMsg('');
     try {
+      // Ensure on Sepolia before any tx
+      if (chainId !== sepolia.id) {
+        await switchChainAsync({ chainId: sepolia.id });
+      }
       if (needsApproval) {
         setApproving(true);
         const hash = await approve(AQUA_PARLAY_ROUTER_ADDRESS, stakeUsdc);

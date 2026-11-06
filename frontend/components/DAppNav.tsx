@@ -3,8 +3,9 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { useAccount, useConnect, useDisconnect } from 'wagmi';
+import { useAccount, useConnect, useDisconnect, useChainId, useSwitchChain } from 'wagmi';
 import { injected } from 'wagmi/connectors';
+import { sepolia } from 'wagmi/chains';
 import AspenLogo from './AspenLogo';
 import { useUsdcBalance } from '@/lib/hooks';
 
@@ -36,7 +37,10 @@ function WalletButton() {
   const { address, isConnected } = useAccount();
   const { connect }              = useConnect();
   const { disconnect }           = useDisconnect();
+  const chainId                  = useChainId();
+  const { switchChain }          = useSwitchChain();
   const { formatted: usdc }      = useUsdcBalance(address);
+  const wrongChain               = isConnected && chainId !== sepolia.id;
 
   if (!isConnected) {
     return (
@@ -45,6 +49,17 @@ function WalletButton() {
         style={{ display: 'flex', alignItems: 'center', padding: '0 24px', height: '100%', background: 'var(--black)', color: 'var(--white)', border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: 10, letterSpacing: '0.08em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}
       >
         CONNECT →
+      </button>
+    );
+  }
+
+  if (wrongChain) {
+    return (
+      <button
+        onClick={() => switchChain({ chainId: sepolia.id })}
+        style={{ display: 'flex', alignItems: 'center', padding: '0 24px', height: '100%', background: '#c00', color: '#fff', border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: 10, letterSpacing: '0.08em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}
+      >
+        ⚠ SWITCH TO SEPOLIA
       </button>
     );
   }
