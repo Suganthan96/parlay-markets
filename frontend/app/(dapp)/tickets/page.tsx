@@ -7,6 +7,7 @@ import { formatUnits } from 'viem';
 import { PARLAY_VAULT_ABI, PARLAY_VAULT_ADDRESS, LMSR_MARKET_ABI } from '@/lib/contracts';
 import { useCashOut, useClaim } from '@/lib/hooks';
 import { useParlayStore } from '@/lib/store';
+import { TxLink } from '@/components/ui/TxLink';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -14,6 +15,8 @@ function fmt(raw: bigint | undefined): string {
   if (raw === undefined) return '—';
   return Number(formatUnits(raw, 6)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
+
+const OUTCOME_LABELS = ['HOME WIN', 'AWAY WIN', 'DRAW'];
 
 // ── Leg row ───────────────────────────────────────────────────────────────────
 
@@ -28,7 +31,7 @@ function LegRow({ ticketId, legIdx }: { ticketId: bigint; legIdx: number }) {
   });
   const leg        = data?.[0]?.result as [string, bigint, bigint] | undefined;
   const marketAddr = leg?.[0] as `0x${string}` | undefined;
-  const outcomeIdx = leg?.[1];
+  const outcomeIdx = leg ? Number(leg[1]) : undefined;
   const price      = leg?.[2];
 
   const { data: names } = useReadContracts({
@@ -42,37 +45,65 @@ function LegRow({ ticketId, legIdx }: { ticketId: bigint; legIdx: number }) {
 
   const homeTeam     = names?.[0]?.result as string | undefined;
   const awayTeam     = names?.[1]?.result as string | undefined;
-  const marketResult = Number(names?.[2]?.result ?? 0);
+  const marketResult = Number(names?.[2]?.result ?? 0); // 0=unresolved, 1=home, 2=away, 3=draw
 
-  const pickedHome = Number(outcomeIdx ?? 0) === 0;
-
-  // Use stored question label if available, otherwise show contract address (not football names)
-  let displayLabel: string;
-  if (storedLeg) {
-    displayLabel = storedLeg.question;
-  } else if (marketAddr) {
-    const short = `${marketAddr.slice(0, 6)}…${marketAddr.slice(-4)}`;
-    displayLabel = `${short} · LEG ${legIdx + 1}`;
-  } else {
-    displayLabel = '…';
-  }
-
+  // Leg win/loss: result 0 = unresolved (live), else result-1 = winning outcome index
   let legStatus: 'live' | 'won' | 'lost' = 'live';
-  if (marketResult !== 0) {
-    const wonOutcome = marketResult - 1;
-    legStatus = wonOutcome === Number(outcomeIdx ?? 0) ? 'won' : 'lost';
+  if (marketResult !== 0 && outcomeIdx !== undefined) {
+    legStatus = (marketResult - 1) === outcomeIdx ? 'won' : 'lost';
   }
 
-  const bg     = legStatus === 'won' ? 'var(--mint)' : legStatus === 'lost' ? '#fee' : 'var(--light-gray, #f4f4f4)';
-  const border = legStatus === 'lost' ? '1px solid #FF5A4E' : '1px solid var(--border)';
-  const col    = legStatus === 'lost' ? '#FF5A4E' : 'var(--black)';
+  // Picked team label
+  let pickedLabel: string;
+  if (storedLeg) {
+    pickedLabel = storedLeg.question;
+  } else if (homeTeam && awayTeam && outcomeIdx !== undefined) {
+    pickedLabel = outcomeIdx === 0 ? homeTeam : outcomeIdx === 1 ? awayTeam : 'DRAW';
+  } else if (marketAddr) {
+    pickedLabel = `${marketAddr.slice(0, 6)}…${marketAddr.slice(-4)}`;
+  } else {
+    pickedLabel = '…';
+  }
+
+  // Match label
+  const matchLabel = homeTeam && awayTeam ? `${homeTeam} vs ${awayTeam}` : null;
+  const outcomeLabel = outcomeIdx !== undefined ? (OUTCOME_LABELS[outcomeIdx] ?? `OUTCOME ${outcomeIdx}`) : '';
   const priceDisplay = storedLeg ? storedLeg.price.toFixed(2) : (price ? (Number(price) / 1e18).toFixed(2) : '?');
 
+  const bg     = legStatus === 'won' ? '#f0fdf4' : legStatus === 'lost' ? '#fff1f0' : 'var(--white)';
+  const accent = legStatus === 'won' ? '#16a34a' : legStatus === 'lost' ? '#dc2626' : '#888';
+  const icon   = legStatus === 'won' ? '✓' : legStatus === 'lost' ? '✕' : '◌';
+
   return (
-    <span style={{ padding: '5px 12px', background: bg, border, color: col, fontSize: 11, fontWeight: 600, letterSpacing: '0.03em', display: 'inline-block', maxWidth: '100%', wordBreak: 'break-word' }}>
-      {legStatus === 'won' ? '✓' : legStatus === 'lost' ? '✕' : '●'}{' '}
-      {displayLabel} · {priceDisplay}
-    </span>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 20px', borderBottom: '1px solid var(--border)', background: bg }}>
+      {/* Status icon */}
+      <div style={{ width: 28, height: 28, borderRadius: '50%', background: legStatus === 'live' ? '#f4f4f4' : bg, border: `2px solid ${accent}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+        <span style={{ fontSize: 13, fontWeight: 800, color: accent }}>{icon}</span>
+      </div>
+
+      {/* Match + pick */}
+      <div style={{ flex: 1 }}>
+        {matchLabel && (
+          <div style={{ fontSize: 10, color: '#888', marginBottom: 2, fontFamily: 'var(--font-mono, monospace)', letterSpacing: '0.04em' }}>
+            {matchLabel}
+          </div>
+        )}
+        <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: '0.02em' }}>
+          {pickedLabel}
+          {!storedLeg && outcomeLabel && (
+            <span style={{ marginLeft: 6, fontSize: 10, fontWeight: 500, color: '#888' }}>{outcomeLabel}</span>
+          )}
+        </div>
+      </div>
+
+      {/* Price + resolved outcome */}
+      <div style={{ textAlign: 'right' }}>
+        <div style={{ fontSize: 12, fontWeight: 700, color: accent }}>
+          {legStatus === 'won' ? 'WON' : legStatus === 'lost' ? 'LOST' : 'PENDING'}
+        </div>
+        <div style={{ fontSize: 10, color: '#aaa', marginTop: 2 }}>× {priceDisplay}</div>
+      </div>
+    </div>
   );
 }
 
@@ -86,6 +117,7 @@ function TicketCard({ ticketId }: { ticketId: bigint }) {
       { address: PARLAY_VAULT_ADDRESS, abi: PARLAY_VAULT_ABI, functionName: 'ticketSettled',  args: [ticketId] },
       { address: PARLAY_VAULT_ADDRESS, abi: PARLAY_VAULT_ABI, functionName: 'ticketLegCount', args: [ticketId] },
     ],
+    query: { refetchInterval: 15_000 },
   });
 
   const stake    = data?.[0]?.result as bigint | undefined;
@@ -93,60 +125,93 @@ function TicketCard({ ticketId }: { ticketId: bigint }) {
   const settled  = data?.[2]?.result as boolean | undefined;
   const legCount = Number(data?.[3]?.result ?? 0);
 
-  const { cashOut, isPending: isCashingOut, isSuccess: cashedOut } = useCashOut();
-  const { claim,   isPending: isClaiming,  isSuccess: claimed    } = useClaim();
+  const { cashOut, isPending: isCashingOut, isSuccess: cashedOut, txHash: cashOutTx } = useCashOut();
+  const { claim,   isPending: isClaiming,  isSuccess: claimed,   txHash: claimTx    } = useClaim();
+
+  const isWon  = settled === true  && payout !== undefined && payout > 0n;
+  const isLost = settled === true  && (!payout || payout === 0n);
+  const isLive = settled === false || settled === undefined;
+
+  const statusLabel = isWon ? '✓ WON' : isLost ? '✕ LOST' : '● LIVE';
+  const statusColor = isWon ? '#16a34a' : isLost ? '#dc2626' : 'var(--mint)';
+  const headerBg    = isWon ? '#f0fdf4' : isLost ? '#fff1f0' : 'var(--white)';
 
   return (
-    <div style={{ background: 'var(--white)', border: '1px solid var(--border)' }}>
-      <div style={{ padding: '12px 20px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <span className="text-label" style={{ fontSize: 10 }}>■ TICKET #{ticketId.toString()}</span>
-        <span className="text-label" style={{ fontSize: 9, color: settled ? '#aaa' : 'var(--mint)' }}>
-          {settled ? 'SETTLED' : '● LIVE'}
-        </span>
+    <div style={{ background: 'var(--white)', border: '1px solid var(--border)', overflow: 'hidden' }}>
+
+      {/* Header */}
+      <div style={{ padding: '14px 20px', background: headerBg, borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <span className="text-label" style={{ fontSize: 11, fontWeight: 800 }}>TICKET #{ticketId.toString()}</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <span style={{ fontSize: 11, fontWeight: 800, color: statusColor, letterSpacing: '0.06em' }}>{statusLabel}</span>
+          {legCount > 0 && (
+            <span style={{ fontSize: 9, color: '#aaa', letterSpacing: '0.06em' }}>{legCount}-LEG PARLAY</span>
+          )}
+        </div>
       </div>
 
       {/* Legs */}
-      <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+      <div>
         {Array.from({ length: legCount }, (_, i) => (
           <LegRow key={i} ticketId={ticketId} legIdx={i} />
         ))}
-        {legCount === 0 && <span className="text-label" style={{ fontSize: 10, color: '#bbb' }}>LOADING LEGS…</span>}
+        {legCount === 0 && (
+          <div style={{ padding: '20px', color: '#bbb', fontSize: 10 }}>LOADING LEGS…</div>
+        )}
       </div>
 
       {/* Financials */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', borderBottom: '1px solid var(--border)' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', borderTop: '1px solid var(--border)' }}>
         <div style={{ padding: '16px 20px', borderRight: '1px solid var(--border)' }}>
-          <span className="text-label" style={{ display: 'block', marginBottom: 6, fontSize: 10 }}>■ STAKE</span>
-          <div style={{ fontSize: 28, fontWeight: 800, letterSpacing: '-0.03em' }}>${fmt(stake)}</div>
+          <span className="text-label" style={{ display: 'block', marginBottom: 6, fontSize: 9, color: '#888' }}>■ STAKE</span>
+          <div style={{ fontSize: 26, fontWeight: 800, letterSpacing: '-0.03em' }}>${fmt(stake)}</div>
         </div>
-        <div style={{ padding: '16px 20px' }}>
-          <span className="text-label" style={{ display: 'block', marginBottom: 6, fontSize: 10 }}>■ IF WIN</span>
-          <div style={{ fontSize: 28, fontWeight: 800, letterSpacing: '-0.03em' }}>${fmt(payout)}</div>
+        <div style={{ padding: '16px 20px', background: isWon ? '#f0fdf4' : 'transparent' }}>
+          <span className="text-label" style={{ display: 'block', marginBottom: 6, fontSize: 9, color: isWon ? '#16a34a' : '#888' }}>
+            ■ {isWon ? 'PAYOUT' : isLost ? 'LOST' : 'IF ALL WIN'}
+          </span>
+          <div style={{ fontSize: 26, fontWeight: 800, letterSpacing: '-0.03em', color: isWon ? '#16a34a' : isLost ? '#dc2626' : 'var(--black)' }}>
+            {isLost ? '—' : `$${fmt(payout)}`}
+          </div>
         </div>
       </div>
 
       {/* Action */}
-      <div style={{ padding: '16px 20px' }}>
-        {settled === false && (
+      <div style={{ padding: '16px 20px', borderTop: '1px solid var(--border)', display: 'flex', gap: 12, alignItems: 'center' }}>
+        {isLive && !cashedOut && (
           <button
             onClick={() => cashOut(ticketId)}
-            disabled={isCashingOut || cashedOut}
-            style={{ width: '100%', padding: '14px', background: cashedOut ? 'var(--mint)' : 'var(--black)', color: cashedOut ? 'var(--black)' : 'var(--white)', border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase' }}
+            disabled={isCashingOut}
+            style={{ flex: 1, padding: '14px', background: 'var(--black)', color: 'var(--white)', border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase' }}
           >
-            {cashedOut ? '✓ CASHED OUT' : isCashingOut ? 'CONFIRMING…' : 'CASH OUT NOW →'}
+            {isCashingOut ? 'CONFIRMING…' : 'CASH OUT EARLY →'}
           </button>
         )}
-        {settled === true && payout && payout > 0n && (
+        {cashedOut && (
+          <div style={{ flex: 1, display: 'flex', gap: 10, alignItems: 'center' }}>
+            <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--mint)' }}>✓ CASHED OUT</span>
+            {cashOutTx && <TxLink hash={cashOutTx} />}
+          </div>
+        )}
+        {isWon && !claimed && (
           <button
             onClick={() => claim(ticketId)}
-            disabled={isClaiming || claimed}
-            style={{ width: '100%', padding: '14px', background: claimed ? '#eee' : 'var(--mint)', border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase' }}
+            disabled={isClaiming}
+            style={{ flex: 1, padding: '16px', background: '#16a34a', color: '#fff', border: 'none', cursor: 'pointer', fontWeight: 800, fontSize: 13, letterSpacing: '0.06em', textTransform: 'uppercase' }}
           >
-            {claimed ? '✓ CLAIMED' : isClaiming ? 'CLAIMING…' : `CLAIM $${fmt(payout)} →`}
+            {isClaiming ? 'CLAIMING…' : `CLAIM $${fmt(payout)} →`}
           </button>
         )}
-        {settled === true && (!payout || payout === 0n) && (
-          <span className="text-label" style={{ fontSize: 10, color: '#FF5A4E' }}>■ TICKET LOST — PARLAY DID NOT HIT</span>
+        {claimed && (
+          <div style={{ flex: 1, display: 'flex', gap: 10, alignItems: 'center' }}>
+            <span style={{ fontSize: 11, fontWeight: 700, color: '#16a34a' }}>✓ CLAIMED — FUNDS IN YOUR WALLET</span>
+            {claimTx && <TxLink hash={claimTx} />}
+          </div>
+        )}
+        {isLost && (
+          <div style={{ flex: 1, padding: '14px', background: '#fff1f0', textAlign: 'center' }}>
+            <span className="text-label" style={{ fontSize: 10, color: '#dc2626' }}>✕ PARLAY LOST — BETTER LUCK NEXT TIME</span>
+          </div>
         )}
       </div>
     </div>
@@ -158,7 +223,6 @@ function TicketCard({ ticketId }: { ticketId: bigint }) {
 export default function TicketsPage() {
   const { address, isConnected } = useAccount();
 
-  // Read total ticket count
   const { data: nextId } = useReadContract({
     address: PARLAY_VAULT_ADDRESS,
     abi: PARLAY_VAULT_ABI,
@@ -167,7 +231,6 @@ export default function TicketsPage() {
   });
   const total = Number(nextId ?? 0);
 
-  // Multicall: ticketOwner for every ticket id
   const ownerCalls = Array.from({ length: total }, (_, i) => ({
     address: PARLAY_VAULT_ADDRESS as `0x${string}`,
     abi: PARLAY_VAULT_ABI,
@@ -192,22 +255,22 @@ export default function TicketsPage() {
       </div>
 
       {/* Stat bar */}
-      <div style={{ display: 'flex', borderBottom: '1px solid var(--border)', background: 'var(--white)' }}>
-        <div style={{ padding: '16px 24px', borderRight: '1px solid var(--border)', flex: 1 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 2fr', borderBottom: '1px solid var(--border)', background: 'var(--white)' }}>
+        <div style={{ padding: '16px 24px', borderRight: '1px solid var(--border)' }}>
           <span className="text-label" style={{ display: 'block', fontSize: 9, color: '#aaa', marginBottom: 4 }}>■ TOTAL TICKETS</span>
           <span style={{ fontWeight: 800, fontSize: 22 }}>{total}</span>
         </div>
-        <div style={{ padding: '16px 24px', borderRight: '1px solid var(--border)', flex: 1 }}>
+        <div style={{ padding: '16px 24px', borderRight: '1px solid var(--border)' }}>
           <span className="text-label" style={{ display: 'block', fontSize: 9, color: '#aaa', marginBottom: 4 }}>■ MY TICKETS</span>
           <span style={{ fontWeight: 800, fontSize: 22 }}>{myTicketIds.length}</span>
         </div>
-        <div style={{ padding: '16px 24px', flex: 2 }}>
-          <span className="text-label" style={{ display: 'block', fontSize: 9, color: '#aaa', marginBottom: 4 }}>■ VAULT</span>
+        <div style={{ padding: '16px 24px' }}>
+          <span className="text-label" style={{ display: 'block', fontSize: 9, color: '#aaa', marginBottom: 4 }}>■ VAULT CONTRACT</span>
           <span style={{ fontWeight: 700, fontSize: 11, fontFamily: 'monospace' }}>{PARLAY_VAULT_ADDRESS}</span>
         </div>
       </div>
 
-      {/* Ticket grid */}
+      {/* Ticket list */}
       <div style={{ padding: 1, display: 'flex', flexDirection: 'column', gap: 1, background: 'var(--border)' }}>
         {!isConnected ? (
           <div style={{ background: 'var(--white)', padding: 48, textAlign: 'center' }}>

@@ -217,7 +217,7 @@ export function useCashOut() {
   async function cashOut(ticketId: bigint) {
     return writeContractAsync({ address: PARLAY_VAULT_ADDRESS, abi: PARLAY_VAULT_ABI, functionName: 'cashOut', args: [ticketId] });
   }
-  return { cashOut, isPending, isConfirming, isSuccess };
+  return { cashOut, isPending, isConfirming, isSuccess, txHash };
 }
 
 export function useClaim() {
@@ -226,7 +226,7 @@ export function useClaim() {
   async function claim(ticketId: bigint) {
     return writeContractAsync({ address: PARLAY_VAULT_ADDRESS, abi: PARLAY_VAULT_ABI, functionName: 'claim', args: [ticketId] });
   }
-  return { claim, isPending, isConfirming, isSuccess };
+  return { claim, isPending, isConfirming, isSuccess, txHash };
 }
 
 // ── MarketResolver ────────────────────────────────────────────────────────────
