@@ -6,4 +6,8 @@ via_ir = true
 optimizer = true
 optimizer_runs = 200
 
+[rpc_endpoints]
+# Set MAINNET_RPC_URL in your shell (Infura/Alchemy/etc.) to run ParlayAqua fork tests.
+mainnet = "${MAINNET_RPC_URL}"
+
 # See more config options https://github.com/foundry-rs/foundry/blob/master/crates/config/README.md#all-options
