@@ -60,9 +60,9 @@ function LegRow({ ticketId, legIdx, ticketWon, ticketLost }: {
       <div style={{ flex: 1, fontSize: 12, fontWeight: 600, color: legStatus === 'live' ? '#333' : accent, lineHeight: 1.3 }}>
         {label}
       </div>
-      <div style={{ textAlign: 'right', fontSize: 10, color: accent, fontWeight: 700 }}>
-        {legStatus === 'won' ? 'WON' : legStatus === 'lost' ? 'LOST' : 'PENDING'}
-        <span style={{ color: '#ccc', fontWeight: 400, marginLeft: 4 }}>×{priceDisplay}</span>
+      <div style={{ textAlign: 'right', fontSize: 11, color: accent, fontWeight: 700, letterSpacing: '0.04em' }}>
+        {legStatus === 'won' ? '✓ WON' : legStatus === 'lost' ? '✕ LOST' : 'PENDING'}
+        <div style={{ color: '#aaa', fontWeight: 400, fontSize: 10, marginTop: 1 }}>×{priceDisplay}</div>
       </div>
     </div>
   );
