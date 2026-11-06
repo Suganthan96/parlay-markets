@@ -3,7 +3,10 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import { useAccount, useConnect, useDisconnect } from 'wagmi';
+import { injected } from 'wagmi/connectors';
 import AspenLogo from './AspenLogo';
+import { useUsdcBalance } from '@/lib/hooks';
 
 const NAV = [
   { label: 'Markets', href: '/markets' },
@@ -27,6 +30,38 @@ function LiveClock() {
     return () => clearInterval(id);
   }, []);
   return <span className="text-label" style={{ fontSize: 10 }}>{time}</span>;
+}
+
+function WalletButton() {
+  const { address, isConnected } = useAccount();
+  const { connect }              = useConnect();
+  const { disconnect }           = useDisconnect();
+  const { formatted: usdc }      = useUsdcBalance(address);
+
+  if (!isConnected) {
+    return (
+      <button
+        onClick={() => connect({ connector: injected() })}
+        style={{ display: 'flex', alignItems: 'center', padding: '0 24px', height: '100%', background: 'var(--black)', color: 'var(--white)', border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: 10, letterSpacing: '0.08em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}
+      >
+        CONNECT →
+      </button>
+    );
+  }
+
+  return (
+    <button
+      onClick={() => disconnect()}
+      title="Click to disconnect"
+      style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '0 20px', height: '100%', background: 'var(--black)', color: 'var(--white)', border: 'none', cursor: 'pointer', textAlign: 'left' }}
+    >
+      <span style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+        <span className="text-label" style={{ fontSize: 9, color: '#888' }}>■ SEPOLIA · USDC</span>
+        <span style={{ fontWeight: 800, fontSize: 12, letterSpacing: '-0.01em' }}>${usdc}</span>
+      </span>
+      <span className="text-label" style={{ fontSize: 9, color: '#555' }}>{address?.slice(0, 6)}…{address?.slice(-4)}</span>
+    </button>
+  );
 }
 
 export function DAppNav() {
@@ -81,13 +116,9 @@ export function DAppNav() {
           })}
         </nav>
 
-        {/* Wallet placeholder */}
-        <div
-          style={{ display: 'flex', alignItems: 'center', padding: '0 24px', background: 'var(--black)', color: 'var(--white)' }}
-        >
-          <span className="text-label" style={{ fontSize: 10 }}>
-            {process.env.NEXT_PUBLIC_MOCK === 'true' ? '● MOCK MODE' : '● SEPOLIA'}
-          </span>
+        {/* Wallet */}
+        <div style={{ display: 'flex', alignItems: 'stretch' }}>
+          <WalletButton />
         </div>
       </div>
 
