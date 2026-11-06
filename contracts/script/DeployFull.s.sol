@@ -7,6 +7,7 @@ import {MarketResolver}    from "../src/MarketResolver.sol";
 import {LmsrMarket}        from "../src/LmsrMarket.sol";
 import {ParlayVault}       from "../src/ParlayVault.sol";
 import {AquaParlayRouter}  from "../src/AquaParlayRouter.sol";
+import {IAqua}             from "../src/interfaces/IAqua.sol";
 
 address constant AQUA = 0x1111113CCf1426A8E30e2bfF5E005d929bF6a90a;
 
@@ -83,11 +84,20 @@ contract DeployFull is Script {
         console.log("Approved Aqua for 2000 USDC");
 
         // ── 9. Ship virtual liquidity to Aqua ────────────────────────────────
+        // CRITICAL: deployer calls AQUA.ship() directly (not through the router).
+        // Aqua stores balance under msg.sender = deployer (the maker/LP).
+        // If router called it, balance would be under [router] but pull() checks [deployer].
         address[] memory markets = new address[](2);
         markets[0] = address(marketA);
         markets[1] = address(marketB);
 
-        bytes32 strategyHash = aquaRouter.lpShipAqua(markets, aquaReserve);
+        address[] memory shipTokens  = new address[](1);
+        uint256[] memory shipAmounts = new uint256[](1);
+        shipTokens[0]  = address(usdc);
+        shipAmounts[0] = aquaReserve;
+
+        bytes memory strategy = abi.encode(markets);
+        bytes32 strategyHash  = IAqua(AQUA).ship(address(aquaRouter), strategy, shipTokens, shipAmounts);
         console.log("Shipped to Aqua. Strategy hash:");
         console.logBytes32(strategyHash);
 

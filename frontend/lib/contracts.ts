@@ -14,6 +14,29 @@ export const MARKET_ADDRESSES: `0x${string}`[] =
 
 // 1inch Aqua (deployed on Sepolia)
 export const AQUA_ADDRESS        = '0x1111113CCf1426A8E30e2bfF5E005d929bF6a90a' as `0x${string}`;
+
+// Aqua ABI — LP calls ship() directly so their wallet is msg.sender (the maker)
+export const AQUA_ABI = [
+  {
+    name: 'ship', type: 'function', stateMutability: 'nonpayable',
+    inputs: [
+      { name: 'app',      type: 'address'   },
+      { name: 'strategy', type: 'bytes'     },
+      { name: 'tokens',   type: 'address[]' },
+      { name: 'amounts',  type: 'uint256[]' },
+    ],
+    outputs: [{ name: 'strategyHash', type: 'bytes32' }],
+  },
+  {
+    name: 'dock', type: 'function', stateMutability: 'nonpayable',
+    inputs: [
+      { name: 'app',          type: 'address'   },
+      { name: 'strategyHash', type: 'bytes32'   },
+      { name: 'tokens',       type: 'address[]' },
+    ],
+    outputs: [],
+  },
+] as const;
 // AquaParlayRouter — integrates Aqua.pull() for end-to-end LP→user flow
 export const AQUA_PARLAY_ROUTER_ADDRESS = (process.env.NEXT_PUBLIC_AQUA_ROUTER ?? '0x169c3A8efC5E324f0BEb9A95A58D2C5b20971F2c') as `0x${string}`;
 // Pre-computed strategy hash for [MARKET_A, MARKET_B]

@@ -4,10 +4,10 @@ import {
   useReadContract, useReadContracts, useWriteContract,
   useWaitForTransactionReceipt, useAccount, useBalance,
 } from 'wagmi';
-import { parseUnits, formatUnits } from 'viem';
+import { parseUnits, formatUnits, encodeAbiParameters, parseAbiParameters } from 'viem';
 import {
   ERC20_ABI, LMSR_MARKET_ABI, PARLAY_ROUTER_ABI, PARLAY_VAULT_ABI, MARKET_RESOLVER_ABI,
-  AQUA_PARLAY_ROUTER_ABI,
+  AQUA_PARLAY_ROUTER_ABI, AQUA_ABI,
   MOCK_USDC_ADDRESS, PARLAY_ROUTER_ADDRESS, PARLAY_VAULT_ADDRESS, MARKET_RESOLVER_ADDRESS,
   AQUA_PARLAY_ROUTER_ADDRESS, AQUA_ADDRESS, MARKET_ADDRESSES,
 } from './contracts';
@@ -289,12 +289,24 @@ export function useApproveAqua() {
 export function useLpShipAqua() {
   const { writeContractAsync, isPending, data: txHash } = useWriteContract();
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash: txHash });
+  // LP calls AQUA.ship() directly — their wallet is msg.sender = maker in Aqua storage.
+  // This is required: if the router called ship(), Aqua records balance under [router],
+  // but pull() checks under [LP address] → underflow revert.
   async function lpShipAqua(markets: `0x${string}`[], payoutReserve: bigint) {
+    const strategy = encodeAbiParameters(
+      parseAbiParameters('address[]'),
+      [markets],
+    );
     return writeContractAsync({
-      address: AQUA_PARLAY_ROUTER_ADDRESS,
-      abi: AQUA_PARLAY_ROUTER_ABI,
-      functionName: 'lpShipAqua',
-      args: [markets, payoutReserve],
+      address: AQUA_ADDRESS,
+      abi: AQUA_ABI,
+      functionName: 'ship',
+      args: [
+        AQUA_PARLAY_ROUTER_ADDRESS,  // app = our router
+        strategy,                     // abi.encode(markets)
+        [MOCK_USDC_ADDRESS],          // tokens
+        [payoutReserve],              // amounts
+      ],
     });
   }
   return { lpShipAqua, isPending, isConfirming, isSuccess, txHash };
