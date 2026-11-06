@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { useAccount, useConnect, useDisconnect, useChainId, useSwitchChain } from 'wagmi';
 import { injected } from 'wagmi/connectors';
-import { sepolia } from 'wagmi/chains';
+import { sepolia, baseSepolia } from 'wagmi/chains';
 import AspenLogo from './AspenLogo';
 import { useUsdcBalance } from '@/lib/hooks';
 import { useParlayStore } from '@/lib/store';
@@ -33,6 +33,26 @@ function LiveClock() {
   return <span className="text-label" style={{ fontSize: 10 }}>{time}</span>;
 }
 
+async function addAndSwitchToBase() {
+  const eth = (window as any).ethereum;
+  if (!eth) return;
+  await eth.request({ method: 'eth_requestAccounts' });
+  try {
+    await eth.request({
+      method: 'wallet_addEthereumChain',
+      params: [{
+        chainId: '0x14a34',
+        chainName: 'Base Sepolia Testnet',
+        nativeCurrency: { name: 'ETH', symbol: 'ETH', decimals: 18 },
+        rpcUrls: ['https://sepolia.base.org', 'https://base-sepolia-rpc.publicnode.com'],
+        blockExplorerUrls: ['https://sepolia.basescan.org'],
+      }],
+    });
+  } catch {
+    await eth.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: '0x14a34' }] });
+  }
+}
+
 function WalletButton() {
   const { address, isConnected } = useAccount();
   const { connect }              = useConnect();
@@ -40,7 +60,10 @@ function WalletButton() {
   const chainId                  = useChainId();
   const { switchChain }          = useSwitchChain();
   const { formatted: usdc }      = useUsdcBalance(address);
-  const wrongChain               = isConnected && chainId !== sepolia.id;
+
+  const onSepolia     = chainId === sepolia.id;
+  const onBaseSepolia = chainId === baseSepolia.id;
+  const wrongChain    = isConnected && !onSepolia && !onBaseSepolia;
 
   if (!isConnected) {
     return (
@@ -65,17 +88,35 @@ function WalletButton() {
   }
 
   return (
-    <button
-      onClick={() => disconnect()}
-      title="Click to disconnect"
-      style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '0 20px', height: '100%', background: 'var(--black)', color: 'var(--white)', border: 'none', cursor: 'pointer', textAlign: 'left' }}
-    >
-      <span style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-        <span className="text-label" style={{ fontSize: 9, color: '#888' }}>■ SEPOLIA · USDC</span>
-        <span style={{ fontWeight: 800, fontSize: 12, letterSpacing: '-0.01em' }}>${usdc}</span>
-      </span>
-      <span className="text-label" style={{ fontSize: 9, color: '#555' }}>{address?.slice(0, 6)}…{address?.slice(-4)}</span>
-    </button>
+    <div style={{ display: 'flex', alignItems: 'stretch' }}>
+      {/* Wallet info */}
+      <button
+        onClick={() => disconnect()}
+        title="Click to disconnect"
+        style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '0 20px', height: '100%', background: 'var(--black)', color: 'var(--white)', border: 'none', cursor: 'pointer', textAlign: 'left', borderRight: '1px solid #333' }}
+      >
+        <span style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+          <span className="text-label" style={{ fontSize: 9, color: onBaseSepolia ? '#6366f1' : '#888' }}>
+            ■ {onBaseSepolia ? 'BASE SEPOLIA' : 'SEPOLIA'} · {onBaseSepolia ? 'ETH' : 'USDC'}
+          </span>
+          <span style={{ fontWeight: 800, fontSize: 12, letterSpacing: '-0.01em' }}>
+            {onBaseSepolia ? address?.slice(0, 6) + '…' + address?.slice(-4) : `$${usdc}`}
+          </span>
+        </span>
+        {!onBaseSepolia && (
+          <span className="text-label" style={{ fontSize: 9, color: '#555' }}>{address?.slice(0, 6)}…{address?.slice(-4)}</span>
+        )}
+      </button>
+
+      {/* Chain toggle */}
+      <button
+        onClick={() => onBaseSepolia ? switchChain({ chainId: sepolia.id }) : addAndSwitchToBase()}
+        title={onBaseSepolia ? 'Switch to Ethereum Sepolia' : 'Switch to Base Sepolia for CCIP'}
+        style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '0 16px', height: '100%', background: onBaseSepolia ? '#2151f5' : '#1a1a1a', color: '#fff', border: 'none', cursor: 'pointer', fontWeight: 800, fontSize: 9, letterSpacing: '0.08em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}
+      >
+        {onBaseSepolia ? '⇄ ETH SEPOLIA' : '⇄ BASE'}
+      </button>
+    </div>
   );
 }
 
@@ -144,9 +185,7 @@ export function DAppNav() {
         </nav>
 
         {/* Wallet */}
-        <div style={{ display: 'flex', alignItems: 'stretch' }}>
-          <WalletButton />
-        </div>
+        <WalletButton />
       </div>
 
     </header>
