@@ -26,7 +26,7 @@ export default function Header() {
   const istTime = useClock("Asia/Kolkata", "IST");
   const [menuOpen, setMenuOpen] = useState(false);
 
-  const navLinks = ["How It Works", "Built On", "Protocol", "Team"];
+  const navLinks = ["How It Works", "Built On", "Protocol", "Team", "Pitch"];
 
   return (
     <header
@@ -51,8 +51,9 @@ export default function Header() {
             {navLinks.map((link) => (
               <a
                 key={link}
-                href={`#${link.toLowerCase().replace(/\s+/g, "-")}`}
+                href={link === "Pitch" ? "/pitch" : `#${link.toLowerCase().replace(/\s+/g, "-")}`}
                 className="text-sm font-medium text-charcoal hover:opacity-60 transition-opacity"
+                style={link === "Pitch" ? { fontWeight: 700, letterSpacing: "0.04em", textTransform: "uppercase", fontSize: 11 } : {}}
               >
                 {link}
               </a>
@@ -96,7 +97,7 @@ export default function Header() {
           {navLinks.map((link) => (
             <a
               key={link}
-              href={`#${link.toLowerCase().replace(/\s+/g, "-")}`}
+              href={link === "Pitch" ? "/pitch" : `#${link.toLowerCase().replace(/\s+/g, "-")}`}
               onClick={() => setMenuOpen(false)}
               className="px-5 py-4 text-sm font-medium border-b"
               style={{ borderColor: "var(--border)" }}
