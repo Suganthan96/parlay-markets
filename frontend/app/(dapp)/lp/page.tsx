@@ -418,7 +418,7 @@ export default function LpPage() {
           { label: 'TICKETS SOLD',     value: String(totalTickets),                 note: 'all parlays on-chain',                  bg: 'var(--white)' },
           { label: 'LP MODEL',         value: 'b × ln N',                           note: 'bounded max-loss per market',           bg: 'var(--mint)'  },
         ].map(s => (
-          <div key={s.label} className="gc-1" style={{ background: s.bg, padding: 'clamp(20px,3vw,36px) 24px' }}>
+          <div key={s.label} style={{ background: s.bg, padding: 'clamp(20px,3vw,36px) 24px' }}>
             <span className="text-label" style={{ display: 'block', marginBottom: 12, fontSize: 10 }}>■ {s.label}</span>
             <div style={{ fontSize: 'clamp(28px,3.5vw,48px)', fontWeight: 800, letterSpacing: '-0.04em', lineHeight: 1 }}>{s.value}</div>
             <div className="text-label" style={{ marginTop: 10, fontSize: 10, color: '#888' }}>{s.note}</div>
