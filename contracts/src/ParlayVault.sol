@@ -163,6 +163,14 @@ contract ParlayVault {
         return _tickets[id].cashedOut || _tickets[id].claimed;
     }
 
+    function ticketCashedOut(uint256 id) external view returns (bool) {
+        return _tickets[id].cashedOut;
+    }
+
+    function ticketClaimed(uint256 id) external view returns (bool) {
+        return _tickets[id].claimed;
+    }
+
     function ticketLeg(uint256 id, uint8 i)
         external view
         returns (address market, uint256 outcome, uint256 price)
