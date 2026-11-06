@@ -1,16 +1,13 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAccount } from 'wagmi';
-import { useReadContract, useReadContracts } from 'wagmi';
+import { useReadContract, useReadContracts, useSimulateContract } from 'wagmi';
 import { formatUnits } from 'viem';
 import { PARLAY_VAULT_ABI, PARLAY_VAULT_ADDRESS, LMSR_MARKET_ABI } from '@/lib/contracts';
 import { useCashOut, useClaim } from '@/lib/hooks';
 import { useParlayStore } from '@/lib/store';
-import { useEffect } from 'react';
 import { TxLink } from '@/components/ui/TxLink';
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
 
 function fmt(raw: bigint | undefined): string {
   if (raw === undefined) return '—';
@@ -21,7 +18,9 @@ const OUTCOME_LABELS = ['HOME WIN', 'AWAY WIN', 'DRAW'];
 
 // ── Leg row ───────────────────────────────────────────────────────────────────
 
-function LegRow({ ticketId, legIdx, ticketWon, ticketLost }: { ticketId: bigint; legIdx: number; ticketWon?: boolean; ticketLost?: boolean }) {
+function LegRow({ ticketId, legIdx, ticketWon, ticketLost }: {
+  ticketId: bigint; legIdx: number; ticketWon: boolean; ticketLost: boolean;
+}) {
   const ticketMeta = useParlayStore(s => s.ticketMeta);
   const storedLeg  = ticketMeta[ticketId.toString()]?.legs[legIdx];
 
@@ -35,83 +34,44 @@ function LegRow({ ticketId, legIdx, ticketWon, ticketLost }: { ticketId: bigint;
   const outcomeIdx = leg ? Number(leg[1]) : undefined;
   const price      = leg?.[2];
 
-  const { data: names } = useReadContracts({
-    contracts: marketAddr ? [
-      { address: marketAddr, abi: LMSR_MARKET_ABI, functionName: 'result' },
-    ] : [],
-    query: { enabled: !!marketAddr },
-  });
+  // Leg status derives ONLY from vault settlement — never from raw market result
+  // (market result can be non-zero for test markets without the ticket being settled)
+  const legStatus: 'live' | 'won' | 'lost' =
+    ticketWon ? 'won' : ticketLost ? 'lost' : 'live';
 
-  const marketResult = Number(names?.[0]?.result ?? 0); // 0=unresolved, 1=home, 2=away, 3=draw
+  const label: string = storedLeg
+    ? `${storedLeg.question}${storedLeg.outcome ? ` · ${storedLeg.outcome}` : ''}`
+    : marketAddr
+      ? `${marketAddr.slice(0, 8)}…${marketAddr.slice(-6)}  ${outcomeIdx !== undefined ? (OUTCOME_LABELS[outcomeIdx] ?? '') : ''}`
+      : '…';
 
-  // Leg win/loss: derive from ticket settlement first, then market result
-  let legStatus: 'live' | 'won' | 'lost' = 'live';
-  if (ticketWon) {
-    legStatus = 'won'; // ticket won = all legs won
-  } else if (ticketLost && marketResult !== 0 && outcomeIdx !== undefined) {
-    legStatus = (marketResult - 1) === outcomeIdx ? 'won' : 'lost';
-  } else if (ticketLost) {
-    legStatus = 'lost'; // ticket lost but can't pinpoint which leg — mark all lost
-  } else if (marketResult !== 0 && outcomeIdx !== undefined) {
-    legStatus = (marketResult - 1) === outcomeIdx ? 'won' : 'lost';
-  }
+  const priceDisplay = storedLeg
+    ? storedLeg.price.toFixed(2)
+    : price ? (Number(price) / 1e18).toFixed(2) : '?';
 
-  // Picked team label — only use on-chain names if stored leg data confirms them
-  let pickedLabel: string;
-  if (storedLeg) {
-    pickedLabel = storedLeg.question;
-  } else if (marketAddr) {
-    pickedLabel = `${marketAddr.slice(0, 6)}…${marketAddr.slice(-4)}`;
-  } else {
-    pickedLabel = '…';
-  }
-
-  // Match label — only show if stored leg has the real question
-  const matchLabel = storedLeg ? null : null;
-  const outcomeLabel = storedLeg ? '' : outcomeIdx !== undefined ? (OUTCOME_LABELS[outcomeIdx] ?? '') : '';
-  const priceDisplay = storedLeg ? storedLeg.price.toFixed(2) : (price ? (Number(price) / 1e18).toFixed(2) : '?');
-
-  const bg     = legStatus === 'won' ? '#f0fdf4' : legStatus === 'lost' ? '#fff1f0' : 'var(--white)';
-  const accent = legStatus === 'won' ? '#16a34a' : legStatus === 'lost' ? '#dc2626' : '#888';
-  const icon   = legStatus === 'won' ? '✓' : legStatus === 'lost' ? '✕' : '◌';
+  const accent = legStatus === 'won' ? '#16a34a' : legStatus === 'lost' ? '#dc2626' : '#999';
+  const bg     = legStatus === 'won' ? '#f0fdf4' : legStatus === 'lost' ? '#fff5f5' : 'var(--white)';
 
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 20px', borderBottom: '1px solid var(--border)', background: bg }}>
-      {/* Status icon */}
-      <div style={{ width: 28, height: 28, borderRadius: '50%', background: legStatus === 'live' ? '#f4f4f4' : bg, border: `2px solid ${accent}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-        <span style={{ fontSize: 13, fontWeight: 800, color: accent }}>{icon}</span>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 20px', borderBottom: '1px solid var(--border)', background: bg }}>
+      <span style={{ fontSize: 14, color: accent, minWidth: 16, textAlign: 'center' }}>
+        {legStatus === 'won' ? '✓' : legStatus === 'lost' ? '✕' : '◌'}
+      </span>
+      <div style={{ flex: 1, fontSize: 12, fontWeight: 600, color: legStatus === 'live' ? '#333' : accent, lineHeight: 1.3 }}>
+        {label}
       </div>
-
-      {/* Match + pick */}
-      <div style={{ flex: 1 }}>
-        {matchLabel && (
-          <div style={{ fontSize: 10, color: '#888', marginBottom: 2, fontFamily: 'var(--font-mono, monospace)', letterSpacing: '0.04em' }}>
-            {matchLabel}
-          </div>
-        )}
-        <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: '0.02em' }}>
-          {pickedLabel}
-          {!storedLeg && outcomeLabel && (
-            <span style={{ marginLeft: 6, fontSize: 10, fontWeight: 500, color: '#888' }}>{outcomeLabel}</span>
-          )}
-        </div>
-      </div>
-
-      {/* Price + resolved outcome */}
-      <div style={{ textAlign: 'right' }}>
-        <div style={{ fontSize: 12, fontWeight: 700, color: accent }}>
-          {legStatus === 'won' ? 'WON' : legStatus === 'lost' ? 'LOST' : 'PENDING'}
-        </div>
-        <div style={{ fontSize: 10, color: '#aaa', marginTop: 2 }}>× {priceDisplay}</div>
+      <div style={{ textAlign: 'right', fontSize: 10, color: accent, fontWeight: 700 }}>
+        {legStatus === 'won' ? 'WON' : legStatus === 'lost' ? 'LOST' : 'PENDING'}
+        <span style={{ color: '#ccc', fontWeight: 400, marginLeft: 4 }}>×{priceDisplay}</span>
       </div>
     </div>
   );
 }
 
-// ── Ticket card ───────────────────────────────────────────────────────────────
+// ── Ticket card (collapsible) ─────────────────────────────────────────────────
 
 function TicketCard({ ticketId }: { ticketId: bigint }) {
-  const { data } = useReadContracts({
+  const { data, refetch } = useReadContracts({
     contracts: [
       { address: PARLAY_VAULT_ADDRESS, abi: PARLAY_VAULT_ABI, functionName: 'ticketStake',    args: [ticketId] },
       { address: PARLAY_VAULT_ADDRESS, abi: PARLAY_VAULT_ABI, functionName: 'ticketPayout',   args: [ticketId] },
@@ -133,95 +93,136 @@ function TicketCard({ ticketId }: { ticketId: bigint }) {
   const ticketKey   = ticketId.toString();
   const wasEarlyOut = isCashedOut(ticketKey) || cashOutSuccess;
 
-  // Persist cashed-out state to store when tx succeeds
   useEffect(() => { if (cashOutSuccess) markCashedOut(ticketKey); }, [cashOutSuccess]);
 
-  const isWon  = settled === true && payout !== undefined && payout > 0n && !wasEarlyOut;
-  const isLost = settled === true && (!payout || payout === 0n);
-  const isLive = (settled === false || settled === undefined) && !wasEarlyOut;
+  // Simulate claim to verify the ticket is actually claimable on-chain.
+  // settled=true can mean either cashedOut OR claimed — we can't distinguish
+  // without a new contract getter. Simulation is the safest source of truth.
+  const { data: claimSim, error: claimSimErr } = useSimulateContract({
+    address: PARLAY_VAULT_ADDRESS,
+    abi: PARLAY_VAULT_ABI,
+    functionName: 'claim',
+    args: [ticketId],
+    query: { enabled: settled === true && !wasEarlyOut && !claimed },
+  });
 
-  const statusLabel = wasEarlyOut ? '↩ CASHED OUT' : isWon ? '✓ WON' : isLost ? '✕ LOST' : '● LIVE';
-  const statusColor = wasEarlyOut ? '#888'          : isWon ? '#16a34a' : isLost ? '#dc2626' : 'var(--mint)';
-  const headerBg    = wasEarlyOut ? '#f8f8f8'       : isWon ? '#f0fdf4' : isLost ? '#fff1f0' : 'var(--white)';
+  // isWon: vault says settled, payout>0, not cashed-out, AND claim simulation passes
+  const isWon  = settled === true && payout !== undefined && payout > 0n && !wasEarlyOut && !!claimSim && !claimSimErr;
+  // cashedOut/already-claimed: settled but claim sim fails
+  const wasSettledNotWon = settled === true && !wasEarlyOut && !claimed && !!claimSimErr;
+  const isLost = (settled === true && (!payout || payout === 0n) && !wasEarlyOut) || wasSettledNotWon;
+  const isLive = !settled && !wasEarlyOut;
+
+  const statusLabel = wasEarlyOut || wasSettledNotWon ? '↩ SETTLED' : isWon ? '✓ WON' : isLost ? '✕ LOST' : '● LIVE';
+  const statusColor = wasEarlyOut || wasSettledNotWon ? '#888' : isWon ? '#16a34a' : isLost ? '#dc2626' : '#00b894';
+  const headerBg    = isWon ? '#f0fdf4' : isLost ? '#fff5f5' : (wasEarlyOut || wasSettledNotWon) ? '#fafafa' : 'var(--white)';
+
+  const [expanded, setExpanded] = useState(true);
 
   return (
     <div style={{ background: 'var(--white)', border: '1px solid var(--border)', overflow: 'hidden' }}>
 
-      {/* Header */}
-      <div style={{ padding: '14px 20px', background: headerBg, borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <span className="text-label" style={{ fontSize: 11, fontWeight: 800 }}>TICKET #{ticketId.toString()}</span>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <span style={{ fontSize: 11, fontWeight: 800, color: statusColor, letterSpacing: '0.06em' }}>{statusLabel}</span>
-          {legCount > 0 && (
-            <span style={{ fontSize: 9, color: '#aaa', letterSpacing: '0.06em' }}>{legCount}-LEG PARLAY</span>
-          )}
-        </div>
+      {/* Compact header row — always visible, click to toggle */}
+      <div
+        onClick={() => setExpanded(e => !e)}
+        style={{
+          padding: '12px 20px', background: headerBg, cursor: 'pointer',
+          display: 'flex', alignItems: 'center', gap: 12,
+          borderBottom: expanded ? '1px solid var(--border)' : 'none',
+        }}
+      >
+        <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.06em', minWidth: 80 }}>
+          TICKET #{ticketKey}
+        </span>
+        <span style={{ fontSize: 11, fontWeight: 800, color: statusColor, letterSpacing: '0.05em', flex: 1 }}>
+          {statusLabel}
+        </span>
+        {legCount > 0 && (
+          <span style={{ fontSize: 9, color: '#aaa', letterSpacing: '0.06em' }}>{legCount}-LEG</span>
+        )}
+        <span style={{ fontSize: 11, fontWeight: 700, color: '#333' }}>
+          ${fmt(stake)}
+        </span>
+        {isWon && (
+          <span style={{ fontSize: 11, fontWeight: 800, color: '#16a34a' }}>→ ${fmt(payout)}</span>
+        )}
+        <span style={{ fontSize: 14, color: '#ccc', marginLeft: 4 }}>{expanded ? '▲' : '▼'}</span>
       </div>
 
-      {/* Legs */}
-      <div>
-        {Array.from({ length: legCount }, (_, i) => (
-          <LegRow key={i} ticketId={ticketId} legIdx={i} ticketWon={isWon} ticketLost={isLost || wasEarlyOut} />
-        ))}
-        {legCount === 0 && (
-          <div style={{ padding: '20px', color: '#bbb', fontSize: 10 }}>LOADING LEGS…</div>
-        )}
-      </div>
+      {/* Expandable body */}
+      {expanded && (
+        <>
+          {/* Legs */}
+          <div>
+            {Array.from({ length: legCount }, (_, i) => (
+              <LegRow key={i} ticketId={ticketId} legIdx={i} ticketWon={isWon} ticketLost={isLost || wasEarlyOut} />
+            ))}
+            {legCount === 0 && (
+              <div style={{ padding: '16px 20px', color: '#ccc', fontSize: 10 }}>LOADING…</div>
+            )}
+          </div>
 
-      {/* Financials */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', borderTop: '1px solid var(--border)' }}>
-        <div style={{ padding: '16px 20px', borderRight: '1px solid var(--border)' }}>
-          <span className="text-label" style={{ display: 'block', marginBottom: 6, fontSize: 9, color: '#888' }}>■ STAKE</span>
-          <div style={{ fontSize: 26, fontWeight: 800, letterSpacing: '-0.03em' }}>${fmt(stake)}</div>
-        </div>
-        <div style={{ padding: '16px 20px', background: isWon ? '#f0fdf4' : 'transparent' }}>
-          <span className="text-label" style={{ display: 'block', marginBottom: 6, fontSize: 9, color: isWon ? '#16a34a' : '#888' }}>
-            ■ {isWon ? 'PAYOUT' : isLost ? 'LOST' : 'IF ALL WIN'}
-          </span>
-          <div style={{ fontSize: 26, fontWeight: 800, letterSpacing: '-0.03em', color: isWon ? '#16a34a' : isLost ? '#dc2626' : 'var(--black)' }}>
-            {isLost ? '—' : `$${fmt(payout)}`}
+          {/* Financials */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', borderTop: '1px solid var(--border)' }}>
+            <div style={{ padding: '14px 20px', borderRight: '1px solid var(--border)' }}>
+              <span className="text-label" style={{ display: 'block', marginBottom: 4, fontSize: 9, color: '#aaa' }}>■ STAKE</span>
+              <div style={{ fontSize: 22, fontWeight: 800, letterSpacing: '-0.03em' }}>${fmt(stake)}</div>
+            </div>
+            <div style={{ padding: '14px 20px', background: isWon ? '#f0fdf4' : 'transparent' }}>
+              <span className="text-label" style={{ display: 'block', marginBottom: 4, fontSize: 9, color: isWon ? '#16a34a' : '#aaa' }}>
+                ■ {isWon ? 'PAYOUT' : isLost ? 'LOST' : 'IF ALL WIN'}
+              </span>
+              <div style={{ fontSize: 22, fontWeight: 800, letterSpacing: '-0.03em', color: isWon ? '#16a34a' : isLost ? '#dc2626' : 'var(--black)' }}>
+                {isLost ? '—' : `$${fmt(payout)}`}
+              </div>
+            </div>
           </div>
-        </div>
-      </div>
 
-      {/* Action */}
-      <div style={{ padding: '16px 20px', borderTop: '1px solid var(--border)', display: 'flex', gap: 12, alignItems: 'center' }}>
-        {isLive && !wasEarlyOut && (
-          <button
-            onClick={() => cashOut(ticketId)}
-            disabled={isCashingOut}
-            style={{ flex: 1, padding: '14px', background: 'var(--black)', color: 'var(--white)', border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase' }}
-          >
-            {isCashingOut ? 'CONFIRMING…' : 'CASH OUT EARLY →'}
-          </button>
-        )}
-        {wasEarlyOut && (
-          <div style={{ flex: 1, display: 'flex', gap: 10, alignItems: 'center', padding: '14px', background: '#f8f8f8' }}>
-            <span style={{ fontSize: 11, fontWeight: 700, color: '#888' }}>↩ CASHED OUT EARLY</span>
-            {cashOutTx && <TxLink hash={cashOutTx} />}
+          {/* Action button */}
+          <div style={{ padding: '14px 20px', borderTop: '1px solid var(--border)', display: 'flex', gap: 12, alignItems: 'center' }}>
+            {isLive && (
+              <button
+                onClick={e => { e.stopPropagation(); cashOut(ticketId); }}
+                disabled={isCashingOut}
+                style={{ flex: 1, padding: '13px', background: 'var(--black)', color: 'var(--white)', border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase' }}
+              >
+                {isCashingOut ? 'CONFIRMING…' : 'CASH OUT EARLY →'}
+              </button>
+            )}
+            {wasEarlyOut && (
+              <div style={{ flex: 1, display: 'flex', gap: 10, alignItems: 'center', padding: '13px', background: '#fafafa' }}>
+                <span style={{ fontSize: 11, fontWeight: 700, color: '#888' }}>↩ CASHED OUT EARLY</span>
+                {cashOutTx && <TxLink hash={cashOutTx} />}
+              </div>
+            )}
+            {isWon && !claimed && (
+              <button
+                onClick={e => { e.stopPropagation(); claim(ticketId); }}
+                disabled={isClaiming}
+                style={{ flex: 1, padding: '14px', background: '#16a34a', color: '#fff', border: 'none', cursor: 'pointer', fontWeight: 800, fontSize: 13, letterSpacing: '0.06em', textTransform: 'uppercase' }}
+              >
+                {isClaiming ? 'CLAIMING…' : 'CLAIM →'}
+              </button>
+            )}
+            {claimed && (
+              <div style={{ flex: 1, display: 'flex', gap: 10, alignItems: 'center' }}>
+                <span style={{ fontSize: 11, fontWeight: 700, color: '#16a34a' }}>✓ CLAIMED — FUNDS IN YOUR WALLET</span>
+                {claimTx && <TxLink hash={claimTx} />}
+              </div>
+            )}
+            {isLost && !wasSettledNotWon && (
+              <div style={{ flex: 1, padding: '13px', background: '#fff5f5', textAlign: 'center' }}>
+                <span className="text-label" style={{ fontSize: 10, color: '#dc2626' }}>✕ PARLAY LOST — BETTER LUCK NEXT TIME</span>
+              </div>
+            )}
+            {wasSettledNotWon && (
+              <div style={{ flex: 1, padding: '13px', background: '#fafafa', textAlign: 'center' }}>
+                <span className="text-label" style={{ fontSize: 10, color: '#888' }}>↩ ALREADY SETTLED — CASHED OUT OR CLAIMED</span>
+              </div>
+            )}
           </div>
-        )}
-        {isWon && !claimed && !wasEarlyOut && (
-          <button
-            onClick={() => claim(ticketId)}
-            disabled={isClaiming}
-            style={{ flex: 1, padding: '16px', background: '#16a34a', color: '#fff', border: 'none', cursor: 'pointer', fontWeight: 800, fontSize: 13, letterSpacing: '0.06em', textTransform: 'uppercase' }}
-          >
-            {isClaiming ? 'CLAIMING…' : 'CLAIM →'}
-          </button>
-        )}
-        {claimed && (
-          <div style={{ flex: 1, display: 'flex', gap: 10, alignItems: 'center' }}>
-            <span style={{ fontSize: 11, fontWeight: 700, color: '#16a34a' }}>✓ CLAIMED — FUNDS IN YOUR WALLET</span>
-            {claimTx && <TxLink hash={claimTx} />}
-          </div>
-        )}
-        {isLost && !wasEarlyOut && (
-          <div style={{ flex: 1, padding: '14px', background: '#fff1f0', textAlign: 'center' }}>
-            <span className="text-label" style={{ fontSize: 10, color: '#dc2626' }}>✕ PARLAY LOST — BETTER LUCK NEXT TIME</span>
-          </div>
-        )}
-      </div>
+        </>
+      )}
     </div>
   );
 }
@@ -256,13 +257,11 @@ export default function TicketsPage() {
 
   return (
     <div style={{ maxWidth: 1440, margin: '0 auto', borderLeft: '1px solid var(--border)', borderRight: '1px solid var(--border)' }}>
-      {/* Headline */}
       <div style={{ background: 'var(--black)', padding: 'clamp(32px,5vw,72px) clamp(24px,4vw,56px)', borderBottom: '1px solid var(--border)' }}>
         <p className="text-label" style={{ color: '#555', marginBottom: 16, fontSize: 10 }}>■ MY TICKETS · PARLAYVAULT ON-CHAIN</p>
         <h1 className="text-display" style={{ color: 'var(--white)', fontSize: 'clamp(56px,9vw,140px)' }}>CASH OUT<br/>LIVE.</h1>
       </div>
 
-      {/* Stat bar */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 2fr', borderBottom: '1px solid var(--border)', background: 'var(--white)' }}>
         <div style={{ padding: '16px 24px', borderRight: '1px solid var(--border)' }}>
           <span className="text-label" style={{ display: 'block', fontSize: 9, color: '#aaa', marginBottom: 4 }}>■ TOTAL TICKETS</span>
@@ -278,8 +277,7 @@ export default function TicketsPage() {
         </div>
       </div>
 
-      {/* Ticket list */}
-      <div style={{ padding: 1, display: 'flex', flexDirection: 'column', gap: 1, background: 'var(--border)' }}>
+      <div style={{ padding: '24px', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(380px, 1fr))', gap: 16, alignItems: 'start' }}>
         {!isConnected ? (
           <div style={{ background: 'var(--white)', padding: 48, textAlign: 'center' }}>
             <span className="text-label" style={{ fontSize: 10, color: '#aaa' }}>CONNECT YOUR WALLET TO SEE TICKETS.</span>
