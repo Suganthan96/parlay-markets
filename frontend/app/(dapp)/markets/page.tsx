@@ -122,16 +122,32 @@ export default function MarketsPage() {
           <h1 className="text-display" style={{ color: 'var(--white)', fontSize: 'clamp(56px,8vw,120px)' }}>Markets</h1>
         </div>
         <div className="gc-3 flex flex-col justify-between cell-pad" style={{ borderLeft: '1px solid var(--border)', minHeight: 'clamp(200px,28vh,340px)' }}>
-          <p className="text-body" style={{ lineHeight: 1.6 }}>
-            Live outcome prices from LMSR on-chain. Add legs to build a parlay. Odds refresh every 15 s.
-          </p>
+          <div>
+            <p className="text-label" style={{ fontSize: 10, color: '#aaa', marginBottom: 16 }}>■ HOW TO PLAY</p>
+            {[
+              { n: '01', t: 'Pick outcomes', d: 'Add legs from any market below' },
+              { n: '02', t: 'Set your stake', d: 'Enter USDC in the Parlay builder' },
+              { n: '03', t: 'Buy via Aqua', d: 'One tx — payout drawn from LP wallet' },
+            ].map(s => (
+              <div key={s.n} style={{ display: 'flex', gap: 12, marginBottom: 12 }}>
+                <span style={{ fontWeight: 800, fontSize: 11, color: '#ccc', minWidth: 24 }}>{s.n}</span>
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: 12 }}>{s.t}</div>
+                  <div style={{ fontSize: 11, color: '#888' }}>{s.d}</div>
+                </div>
+              </div>
+            ))}
+          </div>
           <Link href="/parlay" style={{ display: 'inline-flex', alignItems: 'center', gap: 10, textDecoration: 'none', fontWeight: 700, fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
             Build a parlay <span style={{ background: 'var(--black)', color: 'var(--white)', padding: '4px 8px' }}>→</span>
           </Link>
         </div>
-        <div className="gc-4 flex flex-col justify-center cell-pad" style={{ background: 'var(--mint)', borderLeft: '1px solid var(--border)', minHeight: 'clamp(200px,28vh,340px)' }}>
-          <p className="text-label" style={{ fontSize: 10, marginBottom: 8 }}>LMSR GUARANTEE</p>
-          <p className="text-body" style={{ fontWeight: 600 }}>Prices always sum to 100%</p>
+        <div className="gc-4 flex flex-col justify-between cell-pad" style={{ background: 'var(--mint)', borderLeft: '1px solid var(--border)', minHeight: 'clamp(200px,28vh,340px)' }}>
+          <p className="text-label" style={{ fontSize: 10 }}>■ LMSR GUARANTEE</p>
+          <div>
+            <p className="text-body" style={{ fontWeight: 700, fontSize: 20, lineHeight: 1.3, marginBottom: 12 }}>Prices always<br/>sum to 100%</p>
+            <p style={{ fontSize: 11, color: '#555', lineHeight: 1.5 }}>Powered by 1inch Aqua virtual liquidity. LP USDC never leaves their wallet until a user wins.</p>
+          </div>
         </div>
       </div>
 
@@ -143,9 +159,26 @@ export default function MarketsPage() {
           </p>
         </div>
       ) : (
-        <div style={{ padding: 1, display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 1, background: 'var(--border)' }}>
-          {MARKET_ADDRESSES.map(addr => <MarketCard key={addr} address={addr} />)}
-        </div>
+        <>
+          <div style={{ padding: 1, display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 1, background: 'var(--border)' }}>
+            {MARKET_ADDRESSES.map(addr => <MarketCard key={addr} address={addr} />)}
+          </div>
+          {/* Aqua flow strip */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 1, background: 'var(--border)', borderTop: '1px solid var(--border)' }}>
+            {[
+              { label: 'LP SEEDS LMSR',    desc: 'Sets opening odds on-chain via LmsrMarket.ship()' },
+              { label: 'LP APPROVES AQUA', desc: 'USDC.approve(Aqua) — wallet stays untouched until payout' },
+              { label: 'USER BUYS PARLAY', desc: 'AquaParlayRouter.buyParlay() → Aqua.pull(LP) → ticket minted' },
+              { label: 'CRE SETTLES',      desc: 'Chainlink CRE resolves result → winners claim USDC' },
+            ].map((s, i) => (
+              <div key={i} style={{ background: 'var(--white)', padding: '20px 24px' }}>
+                <span className="text-label" style={{ fontSize: 9, color: '#aaa' }}>■ STEP {i + 1}</span>
+                <div style={{ fontWeight: 700, fontSize: 12, marginTop: 6, marginBottom: 4 }}>{s.label}</div>
+                <div style={{ fontSize: 11, color: '#888', lineHeight: 1.5 }}>{s.desc}</div>
+              </div>
+            ))}
+          </div>
+        </>
       )}
     </div>
   );
