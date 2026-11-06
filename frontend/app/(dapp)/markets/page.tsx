@@ -253,13 +253,14 @@ function MarketDetailModal({
               />
             </div>
 
-            {/* Yes/No bar */}
-            <div style={{ height: 5, background: '#1a1a1a', marginTop: 16, borderRadius: 2, overflow: 'hidden' }}>
+            {/* Yes/No probability bar */}
+            <div style={{ height: 6, background: '#1a1a1a', marginTop: 16, borderRadius: 3, overflow: 'hidden', display: 'flex' }}>
               <div style={{ height: '100%', width: `${market.yesPrice * 100}%`, background: 'linear-gradient(90deg,#00dc82,#00b87a)', transition: 'width 0.5s' }} />
+              <div style={{ height: '100%', flex: 1, background: '#dc2626', opacity: 0.5 }} />
             </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 6 }}>
-              <span style={{ fontSize: 11, color: '#00dc82', fontWeight: 700 }}>YES {(market.yesPrice * 100).toFixed(1)}%</span>
-              <span style={{ fontSize: 11, color: '#777', fontWeight: 700 }}>NO {((1 - market.yesPrice) * 100).toFixed(1)}%</span>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 7 }}>
+              <span style={{ fontSize: 12, color: '#00dc82', fontWeight: 700 }}>YES {(market.yesPrice * 100).toFixed(1)}%</span>
+              <span style={{ fontSize: 12, color: '#dc2626', fontWeight: 700, opacity: 0.7 }}>NO {((1 - market.yesPrice) * 100).toFixed(1)}%</span>
             </div>
 
             {/* Stats row */}
