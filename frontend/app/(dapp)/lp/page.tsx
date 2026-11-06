@@ -11,8 +11,10 @@ import {
 import {
   useMarketInfo, useUsdcBalance, useShipLiquidity,
   useApproveAqua, useAquaAllowance, useLpShipAqua, useLpDockAqua,
-  useRequestSettlement,
+  useRequestSettlement, useSetCRE, useReadCRE,
 } from '@/lib/hooks';
+import { CRE_FORWARDER_ADDRESS } from '@/lib/contracts';
+import { TxLink } from '@/components/ui/TxLink';
 
 // ── Step indicator ────────────────────────────────────────────────────────────
 
@@ -23,6 +25,46 @@ function Step({ n, title, done, active }: { n: string; title: string; done: bool
         <span style={{ fontWeight: 800, fontSize: 11 }}>{done ? '✓' : n}</span>
       </div>
       <span style={{ fontWeight: 700, fontSize: 12, letterSpacing: '0.04em', textTransform: 'uppercase' }}>{title}</span>
+    </div>
+  );
+}
+
+// ── CRE Forwarder Panel ───────────────────────────────────────────────────────
+
+function CreForwarderPanel() {
+  const currentCre              = useReadCRE();
+  const { setCRE, isPending, isSuccess, txHash } = useSetCRE();
+  const [input, setInput]       = useState('');
+
+  return (
+    <div style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <div style={{ display: 'flex', gap: 24 }}>
+        <div>
+          <span className="text-label" style={{ fontSize: 9, color: '#888', display: 'block', marginBottom: 4 }}>■ CURRENT CRE FORWARDER</span>
+          <span style={{ fontFamily: 'monospace', fontSize: 11 }}>{currentCre ?? '(loading…)'}</span>
+        </div>
+        <div>
+          <span className="text-label" style={{ fontSize: 9, color: '#888', display: 'block', marginBottom: 4 }}>■ KNOWN SEPOLIA FORWARDER</span>
+          <span style={{ fontFamily: 'monospace', fontSize: 11 }}>{CRE_FORWARDER_ADDRESS}</span>
+        </div>
+      </div>
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+        <input
+          value={input}
+          onChange={e => setInput(e.target.value)}
+          placeholder="0x… new forwarder address"
+          style={{ flex: 1, padding: '8px 12px', border: '1px solid var(--border)', fontSize: 11, fontFamily: 'monospace' }}
+        />
+        <button
+          onClick={() => input.startsWith('0x') && setCRE(input as `0x${string}`)}
+          disabled={!input.startsWith('0x') || isPending}
+          style={{ padding: '8px 20px', background: 'var(--black)', color: 'var(--white)', border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: 10, letterSpacing: '0.06em', textTransform: 'uppercase', opacity: input.startsWith('0x') ? 1 : 0.4 }}
+        >
+          {isPending ? 'SENDING…' : 'SET CRE'}
+        </button>
+        {isSuccess && txHash && <TxLink hash={txHash} />}
+        {isSuccess && <span className="text-label" style={{ fontSize: 10, color: 'var(--mint)' }}>■ UPDATED</span>}
+      </div>
     </div>
   );
 }
@@ -285,6 +327,14 @@ export default function LpPage() {
           <span className="text-label" style={{ fontSize: 10 }}>■ LP WIZARD · SHIP TO 1INCH AQUA</span>
         </div>
         <LpShipWizard />
+      </div>
+
+      {/* CRE Forwarder admin panel */}
+      <div style={{ background: 'var(--white)', borderBottom: '1px solid var(--border)' }}>
+        <div style={{ padding: '16px 24px', borderBottom: '1px solid var(--border)' }}>
+          <span className="text-label" style={{ fontSize: 10 }}>■ CHAINLINK CRE FORWARDER · ADMIN</span>
+        </div>
+        <CreForwarderPanel />
       </div>
 
       {/* Market status table */}
