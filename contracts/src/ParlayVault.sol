@@ -28,6 +28,7 @@ contract ParlayVault {
     // ── State ────────────────────────────────────────────────────
     address public immutable usdc;
     address public immutable parlayRouter; // only router can mint tickets
+    address public ccipReceiver;           // set post-deploy; only receiver can mintFromCCIP
 
     uint256 public nextTicketId = 1;
     mapping(uint256 => Ticket) private _tickets;
@@ -79,6 +80,47 @@ contract ParlayVault {
 
         // Pull stake from router (router already pulled from buyer)
         _pull(parlayRouter, stakeUsdc);
+
+        emit TicketMinted(ticketId, owner, stakeUsdc, payoutUsdc, t.legCount);
+    }
+
+    // ── CCIP cross-chain minting ──────────────────────────────────
+
+    /// @notice Set the CCIPParlayReceiver. Can only be called once (or by router for upgrades).
+    function setCcipReceiver(address _ccipReceiver) external {
+        require(ccipReceiver == address(0), "ParlayVault: already set");
+        ccipReceiver = _ccipReceiver;
+    }
+
+    /// @notice Mint a ticket for a cross-chain buyer (called by CCIPParlayReceiver).
+    ///         The receiver pulls USDC directly into this vault before calling.
+    function mintFromCCIP(
+        address owner,
+        uint256 stakeUsdc,
+        uint256 payoutUsdc,
+        address[] calldata markets,
+        uint256[] calldata outcomes,
+        uint256[] calldata prices
+    ) external returns (uint256 ticketId) {
+        require(msg.sender == ccipReceiver, "ParlayVault: only ccipReceiver");
+        require(markets.length > 0 && markets.length <= 5, "ParlayVault: 1-5 legs");
+        require(markets.length == outcomes.length && markets.length == prices.length,
+                "ParlayVault: leg arrays mismatch");
+
+        ticketId = nextTicketId++;
+        Ticket storage t = _tickets[ticketId];
+        t.owner        = owner;
+        t.stakeUsdc    = stakeUsdc;
+        t.payoutUsdc   = payoutUsdc;
+        t.payoutUnits  = payoutUsdc * 1e12;
+        t.legCount     = uint8(markets.length);
+
+        for (uint8 i = 0; i < markets.length; i++) {
+            t.legs[i] = Leg({ market: markets[i], outcome: outcomes[i], price: prices[i] });
+        }
+
+        // Receiver already approved this contract — pull USDC from receiver's reserve
+        _pull(ccipReceiver, stakeUsdc);
 
         emit TicketMinted(ticketId, owner, stakeUsdc, payoutUsdc, t.legCount);
     }
