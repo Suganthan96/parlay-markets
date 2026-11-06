@@ -1,5 +1,33 @@
 // ── Chain config ─────────────────────────────────────────────────────────────
-export const SEPOLIA_CHAIN_ID = 11155111;
+export const SEPOLIA_CHAIN_ID      = 11155111;
+export const BASE_SEPOLIA_CHAIN_ID = 84532;
+
+// ── CCIP cross-chain contracts ────────────────────────────────────────────────
+export const CCIP_GATEWAY_ADDRESS = (process.env.NEXT_PUBLIC_CCIP_GATEWAY ?? '0x942750b61F9Bb9CFDd7E77c5C8484336f9D82b51') as `0x${string}`;
+export const BASE_USDC_ADDRESS    = (process.env.NEXT_PUBLIC_BASE_USDC    ?? '0xd1eAA1d011778c9Daf93c66B20062398b50664CD') as `0x${string}`;
+
+export const CCIP_GATEWAY_ABI = [
+  {
+    name: 'sendParlay', type: 'function', stateMutability: 'payable',
+    inputs: [
+      { name: 'markets',   type: 'address[]' },
+      { name: 'outcomes',  type: 'uint256[]' },
+      { name: 'stakeUsdc', type: 'uint256'   },
+      { name: 'minPayout', type: 'uint256'   },
+    ],
+    outputs: [{ name: 'messageId', type: 'bytes32' }],
+  },
+  {
+    name: 'estimateFee', type: 'function', stateMutability: 'view',
+    inputs: [
+      { name: 'markets',   type: 'address[]' },
+      { name: 'outcomes',  type: 'uint256[]' },
+      { name: 'stakeUsdc', type: 'uint256'   },
+      { name: 'minPayout', type: 'uint256'   },
+    ],
+    outputs: [{ name: 'fee', type: 'uint256' }],
+  },
+] as const;
 
 // ── Contract addresses ────────────────────────────────────────────────────────
 // Fill after running: forge script script/Deploy.s.sol --broadcast --rpc-url $SEPOLIA_RPC

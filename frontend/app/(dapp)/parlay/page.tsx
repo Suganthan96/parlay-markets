@@ -6,6 +6,7 @@ import { useParlayStore } from '@/lib/store';
 import { useQuoteParlay } from '@/lib/hooks';
 import type { ParlayLeg } from '@/lib/types';
 import BuyParlayButton from '@/components/BuyParlayButton';
+import BuyCCIPButton   from '@/components/BuyCCIPButton';
 
 function calcFallback(legs: ParlayLeg[]) {
   if (!legs.length) return { raw: 0, withMargin: 0 };
@@ -212,9 +213,23 @@ export default function ParlayPage() {
               stakeLabel={stake > 0 ? `Buy parlay for $${stake.toFixed(2)} USDC` : undefined}
               onSuccess={clearLegs}
             />
-            <button style={{ width: '100%', padding: '14px', background: 'var(--white)', color: 'var(--black)', border: '1px solid var(--black)', cursor: 'pointer', fontWeight: 700, fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
-              SHARE SLIP →
-            </button>
+
+            {/* Divider */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '4px 0' }}>
+              <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
+              <span style={{ fontSize: 9, color: '#aaa', fontWeight: 700, letterSpacing: '0.08em' }}>OR BUY CROSS-CHAIN</span>
+              <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
+            </div>
+
+            <BuyCCIPButton
+              markets={onChainMarkets}
+              outcomeIdxs={legs.map(l => l.outcomeIdx ?? 0)}
+              stakeUsdc={stake}
+              hasOnChain={hasOnChain}
+              minPayout={minPayout}
+              stakeLabel={stake > 0 ? `Buy parlay for $${stake.toFixed(2)} USDC` : undefined}
+              onSuccess={clearLegs}
+            />
           </div>
         </div>
       </div>
