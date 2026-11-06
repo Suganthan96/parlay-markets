@@ -15,7 +15,7 @@ export interface PolyMarket {
 export async function GET() {
   try {
     const res = await fetch(
-      'https://gamma-api.polymarket.com/markets?closed=false&active=true&limit=50',
+      'https://gamma-api.polymarket.com/markets?closed=false&active=true&limit=200',
       { next: { revalidate: 300 } } // cache 5 min
     );
     if (!res.ok) throw new Error(`Polymarket API: ${res.status}`);
@@ -45,7 +45,7 @@ export async function GET() {
         };
       })
       .sort((a, b) => b.volume24hr - a.volume24hr)
-      .slice(0, 30);
+      .slice(0, 60);
 
     return NextResponse.json(markets);
   } catch (e: any) {
