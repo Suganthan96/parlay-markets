@@ -207,6 +207,19 @@ export const MARKET_RESOLVER_ABI = [
   { name: 'resolveMarkets',     type: 'function', stateMutability: 'nonpayable', inputs: [{ name: 'markets', type: 'address[]' }, { name: 'results', type: 'uint8[]' }], outputs: [] },
   { name: 'requestSettlement',  type: 'function', stateMutability: 'nonpayable', inputs: [{ name: 'matchId', type: 'bytes32' }, { name: 'market', type: 'address' }], outputs: [] },
   { name: 'setCRE',             type: 'function', stateMutability: 'nonpayable', inputs: [{ name: '_cre', type: 'address' }], outputs: [] },
+  { name: 'cre',                type: 'function', stateMutability: 'view',       inputs: [], outputs: [{ name: '', type: 'address' }] },
+  { name: 'owner',              type: 'function', stateMutability: 'view',       inputs: [], outputs: [{ name: '', type: 'address' }] },
+  {
+    name: 'receiveReport', type: 'function', stateMutability: 'nonpayable',
+    inputs: [
+      { name: 'workflowExecutionId', type: 'bytes32' },
+      { name: 'workflowName',        type: 'bytes32' },
+      { name: 'workflowOwner',       type: 'bytes32' },
+      { name: 'data',                type: 'bytes'   },
+    ],
+    outputs: [],
+  },
+  { name: 'CREUpdated', type: 'event', inputs: [{ name: 'oldCRE', type: 'address', indexed: false }, { name: 'newCRE', type: 'address', indexed: false }] },
   {
     name: 'SettlementRequested', type: 'event',
     inputs: [
