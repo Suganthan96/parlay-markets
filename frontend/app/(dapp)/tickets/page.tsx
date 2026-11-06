@@ -36,16 +36,12 @@ function LegRow({ ticketId, legIdx, ticketWon, ticketLost }: { ticketId: bigint;
 
   const { data: names } = useReadContracts({
     contracts: marketAddr ? [
-      { address: marketAddr, abi: LMSR_MARKET_ABI, functionName: 'homeTeam' },
-      { address: marketAddr, abi: LMSR_MARKET_ABI, functionName: 'awayTeam' },
-      { address: marketAddr, abi: LMSR_MARKET_ABI, functionName: 'result'   },
+      { address: marketAddr, abi: LMSR_MARKET_ABI, functionName: 'result' },
     ] : [],
     query: { enabled: !!marketAddr },
   });
 
-  const homeTeam     = names?.[0]?.result as string | undefined;
-  const awayTeam     = names?.[1]?.result as string | undefined;
-  const marketResult = Number(names?.[2]?.result ?? 0); // 0=unresolved, 1=home, 2=away, 3=draw
+  const marketResult = Number(names?.[0]?.result ?? 0); // 0=unresolved, 1=home, 2=away, 3=draw
 
   // Leg win/loss: derive from ticket settlement first, then market result
   let legStatus: 'live' | 'won' | 'lost' = 'live';
@@ -59,21 +55,19 @@ function LegRow({ ticketId, legIdx, ticketWon, ticketLost }: { ticketId: bigint;
     legStatus = (marketResult - 1) === outcomeIdx ? 'won' : 'lost';
   }
 
-  // Picked team label
+  // Picked team label — only use on-chain names if stored leg data confirms them
   let pickedLabel: string;
   if (storedLeg) {
     pickedLabel = storedLeg.question;
-  } else if (homeTeam && awayTeam && outcomeIdx !== undefined) {
-    pickedLabel = outcomeIdx === 0 ? homeTeam : outcomeIdx === 1 ? awayTeam : 'DRAW';
   } else if (marketAddr) {
     pickedLabel = `${marketAddr.slice(0, 6)}…${marketAddr.slice(-4)}`;
   } else {
     pickedLabel = '…';
   }
 
-  // Match label
-  const matchLabel = homeTeam && awayTeam ? `${homeTeam} vs ${awayTeam}` : null;
-  const outcomeLabel = outcomeIdx !== undefined ? (OUTCOME_LABELS[outcomeIdx] ?? `OUTCOME ${outcomeIdx}`) : '';
+  // Match label — only show if stored leg has the real question
+  const matchLabel = storedLeg ? null : null;
+  const outcomeLabel = storedLeg ? '' : outcomeIdx !== undefined ? (OUTCOME_LABELS[outcomeIdx] ?? '') : '';
   const priceDisplay = storedLeg ? storedLeg.price.toFixed(2) : (price ? (Number(price) / 1e18).toFixed(2) : '?');
 
   const bg     = legStatus === 'won' ? '#f0fdf4' : legStatus === 'lost' ? '#fff1f0' : 'var(--white)';
