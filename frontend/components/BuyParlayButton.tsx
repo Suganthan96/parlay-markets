@@ -6,15 +6,24 @@ import { parseUnits } from 'viem';
 import { useApproveUsdc, useBuyParlay, useUsdcAllowance } from '@/lib/hooks';
 import { PARLAY_ROUTER_ADDRESS } from '@/lib/contracts';
 
+interface LegMeta {
+  market:  string;
+  teamA:   string;
+  teamB:   string;
+  outcome: 'home' | 'away';
+  price:   number;
+}
+
 interface Props {
   markets:     `0x${string}`[];
   outcomeIdxs: number[];
   stakeUsdc:   number;
   hasOnChain:  boolean;
+  legsMeta?:   LegMeta[];   // optional rich leg data for Arkiv
   onSuccess?:  () => void;
 }
 
-export default function BuyParlayButton({ markets, outcomeIdxs, stakeUsdc, hasOnChain, onSuccess }: Props) {
+export default function BuyParlayButton({ markets, outcomeIdxs, stakeUsdc, hasOnChain, legsMeta, onSuccess }: Props) {
   const { address, isConnected } = useAccount();
   const [approving, setApproving] = useState(false);
 
@@ -23,7 +32,7 @@ export default function BuyParlayButton({ markets, outcomeIdxs, stakeUsdc, hasOn
   const needsApproval = stakeRaw > 0n && allowance < stakeRaw;
 
   const { approve, isPending: isApproving } = useApproveUsdc();
-  const { buyParlay, isPending, isConfirming, isSuccess } = useBuyParlay();
+  const { buyParlay, isPending, isConfirming, isSuccess, txHash } = useBuyParlay();
 
   const disabled = !isConnected || !hasOnChain || markets.length === 0 || stakeUsdc <= 0;
 
@@ -40,6 +49,20 @@ export default function BuyParlayButton({ markets, outcomeIdxs, stakeUsdc, hasOn
         outcomeIdxs.map(i => BigInt(i)),
         stakeUsdc,
       );
+      // Best-effort Arkiv write — fire-and-forget, don't block UI
+      if (address && legsMeta) {
+        fetch('/api/ticket', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            ticketId:  0,   // vault emits ticketId in ParlayBought; 0 is a placeholder
+            owner:     address,
+            stakeUsdc: parseUnits(stakeUsdc.toString(), 6).toString(),
+            payout:    '0',
+            legs:      legsMeta,
+          }),
+        }).catch(console.warn);
+      }
       onSuccess?.();
     } catch (e) {
       setApproving(false);
