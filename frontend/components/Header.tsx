@@ -42,7 +42,6 @@ export default function Header() {
         >
           <AspenLogo size={22} />
           <span className="font-semibold tracking-tight" style={{ fontSize: 13 }}>PARLAY</span>
-          <span className="text-label text-sm tabular-nums" style={{ marginLeft: 8, opacity: 0.5 }}>{istTime}</span>
         </div>
 
         {/* right: nav + cta */}
@@ -60,7 +59,6 @@ export default function Header() {
             ))}
           </nav>
           <div className="flex items-center gap-4">
-            <div className="toggle" aria-label="Toggle theme" />
             <a
               href="/markets"
               className="flex items-center gap-2 text-sm font-semibold tracking-wide"

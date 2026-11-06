@@ -19,9 +19,9 @@ PRIVATE_KEY="${PRIVATE_KEY:?Set PRIVATE_KEY env var}"
 # Default to public Sepolia RPC; override with your own for reliability
 RPC_URL="${RPC_URL:-https://rpc.sepolia.org}"
 
-MARKET_RESOLVER="0x5d5cc1cd24943ecf43ad5e88281393418ca06bea"
-MARKET_A="0xdcd65fa1e744c51c5ab4d7fb5cb809ee2f7911d9"   # Man City vs Arsenal  (EPL_MCI_ARS_2026)
-MARKET_B="0x76048d02fa32ca200772347498217ac4f35f84aa"   # Real Madrid vs Barcelona (UCL_RMA_BAR_2026)
+MARKET_RESOLVER="0x4EE1a60fC2A4663342e883EBeF40A185B3b268eE"
+MARKET_A="0xf7CfAFa404977dd64eE65703300536A6853d5fB8"   # Man City vs Arsenal  (EPL_MCI_ARS_2026)
+MARKET_B="0x2C467409b0Cb2688EFd98f1e52161E0d787bba32"   # Real Madrid vs Barcelona (UCL_RMA_BAR_2026)
 
 # Match IDs (keccak256 of the string IDs used in deploy)
 MATCH_ID_A=$(cast keccak "EPL_MCI_ARS_2026")
