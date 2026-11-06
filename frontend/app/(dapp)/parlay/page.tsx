@@ -123,8 +123,13 @@ export default function ParlayPage() {
                     {v}%
                   </button>
                 ))}
-                <input type="number" min="0" max="50" value={slippage} onChange={e => setSlippage(e.target.value)}
-                  style={{ width: 48, padding: '3px 6px', fontSize: 10, border: '1px solid var(--border)', textAlign: 'right' }} />
+                <input
+                  type="number" min="0" max="50"
+                  placeholder="custom"
+                  value={['1','3','5'].includes(slippage) ? '' : slippage}
+                  onChange={e => setSlippage(e.target.value)}
+                  style={{ width: 56, padding: '3px 6px', fontSize: 10, border: `1px solid ${!['1','3','5'].includes(slippage) && slippage ? 'var(--black)' : 'var(--border)'}`, textAlign: 'center', outline: 'none' }}
+                />
               </div>
             </div>
           </div>
@@ -180,11 +185,20 @@ export default function ParlayPage() {
 
           {/* Big buy button */}
           <div style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {stake > 0 && displayPayout > 0 && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: '#888', padding: '4px 2px' }}>
+                <span>Min payout (after slippage)</span>
+                <span style={{ fontWeight: 700, color: 'var(--black)' }}>
+                  ${(displayPayout * (1 - slippagePct / 100)).toFixed(2)} USDC
+                </span>
+              </div>
+            )}
             <BuyParlayButton
               markets={onChainMarkets}
               outcomeIdxs={legs.map(l => l.outcomeIdx ?? 0)}
               stakeUsdc={stake}
               hasOnChain={hasOnChain}
+              minPayout={minPayout}
               stakeLabel={stake > 0 ? `Buy parlay for $${stake.toFixed(2)} USDC` : undefined}
               onSuccess={clearLegs}
             />

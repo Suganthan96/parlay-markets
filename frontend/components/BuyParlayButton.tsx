@@ -23,6 +23,7 @@ interface Props {
   outcomeIdxs:   number[];
   stakeUsdc:     number;
   hasOnChain:    boolean;
+  minPayout?:    bigint;
   lp?:           `0x${string}`;
   strategyHash?: `0x${string}`;
   legsMeta?:     LegMeta[];
@@ -35,6 +36,7 @@ const EXPLORER   = 'https://sepolia.etherscan.io/tx/';
 
 export default function BuyParlayButton({
   markets, outcomeIdxs, stakeUsdc, hasOnChain,
+  minPayout = 0n,
   lp = DEFAULT_LP,
   strategyHash = DEFAULT_STRATEGY_HASH,
   legsMeta, stakeLabel, onSuccess,
@@ -92,7 +94,7 @@ export default function BuyParlayButton({
         }
       }
       const expectedTicketId = nextTicketIdData?.toString() ?? Date.now().toString();
-      await buyParlayViaAqua(lp, strategyHash, markets, outcomeIdxs.map(i => BigInt(i)), stakeUsdc);
+      await buyParlayViaAqua(lp, strategyHash, markets, outcomeIdxs.map(i => BigInt(i)), stakeUsdc, minPayout);
       if (txHash) setBuyTx(txHash);
       // Save question labels so tickets page can show real market names
       saveTicketMeta(expectedTicketId, {
