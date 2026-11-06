@@ -342,12 +342,13 @@ function PolyCard({ market, idx, onClick }: { market: PolyMarket; idx: number; o
               <span style={{ fontSize: 11, fontWeight: 700, color: '#16a34a' }}>YES</span>
             </div>
             <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
-              <span style={{ fontSize: 28, fontWeight: 800, letterSpacing: '-0.04em', color: '#888' }}>{((1 - market.yesPrice) * 100).toFixed(0)}%</span>
-              <span style={{ fontSize: 11, fontWeight: 700, color: '#888' }}>NO</span>
+              <span style={{ fontSize: 28, fontWeight: 800, letterSpacing: '-0.04em', color: '#dc2626', opacity: 0.75 }}>{((1 - market.yesPrice) * 100).toFixed(0)}%</span>
+              <span style={{ fontSize: 11, fontWeight: 700, color: '#dc2626', opacity: 0.75 }}>NO</span>
             </div>
           </div>
-          <div style={{ height: 6, background: '#eee', borderRadius: 3, overflow: 'hidden' }}>
-            <div style={{ height: '100%', width: `${market.yesPrice * 100}%`, background: '#16a34a', borderRadius: 3, transition: 'width 0.3s' }} />
+          <div style={{ height: 6, background: '#f5f5f5', borderRadius: 3, overflow: 'hidden', display: 'flex' }}>
+            <div style={{ height: '100%', width: `${market.yesPrice * 100}%`, background: '#16a34a', borderRadius: '3px 0 0 3px', transition: 'width 0.3s' }} />
+            <div style={{ height: '100%', flex: 1, background: '#dc2626', opacity: 0.4 }} />
           </div>
         </div>
       </div>
