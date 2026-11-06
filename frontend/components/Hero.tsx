@@ -28,9 +28,9 @@ export default function Hero() {
           style={{ background: "var(--black)", minHeight: "clamp(260px, 36vh, 480px)" }}
         >
           <p className="text-body text-white leading-relaxed">
-            The first parlay on 1inch Aqua. Pick up to 5 live outcomes across any
-            sport, buy one on-chain ticket, and cash out before the final whistle.
-            LP liquidity never leaves the wallet.
+            The first on-chain parlay. Pick up to 5 live outcomes across sports,
+            politics, and crypto — buy one ticket, win big. Chainlink CRE settles
+            results trustlessly. LP capital never leaves your wallet.
           </p>
           <a href="#how-it-works" className="arrow-btn mt-8">
             <span className="tracking-widest uppercase text-xs font-semibold">
