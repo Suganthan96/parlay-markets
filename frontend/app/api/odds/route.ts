@@ -1,23 +1,15 @@
 /**
  * GET /api/odds
- * Reads live LMSR prices from each deployed market on Sepolia,
- * then writes a fresh LiveOdds entity to Arkiv (5-min TTL).
- *
- * Called by a cron job or on-demand from the frontend to keep odds fresh.
- * Returns JSON with the current prices for all markets.
- *
+ * Reads live LMSR prices from each deployed market on Sepolia.
  * Required env vars:
- *   NEXT_PUBLIC_MARKETS      — comma-separated LmsrMarket addresses
- *   SEPOLIA_RPC_URL          — Alchemy/Infura RPC
- *   ARKIV_PRIVATE_KEY        — server wallet that writes to Arkiv
- *   NEXT_PUBLIC_ARKIV_ACCESS_KEY
+ *   NEXT_PUBLIC_MARKETS  — comma-separated LmsrMarket addresses
+ *   SEPOLIA_RPC_URL      — Alchemy/Infura RPC
  */
 
 import { NextResponse } from 'next/server';
 import { createPublicClient, http } from 'viem';
 import { sepolia } from 'viem/chains';
 import { LMSR_MARKET_ABI } from '@/lib/contracts';
-import { writeLiveOdds } from '@/src/lib/arkiv/write';
 
 const MARKET_ADDRESSES: `0x${string}`[] =
   (process.env.NEXT_PUBLIC_MARKETS ?? '').split(',').filter(Boolean) as `0x${string}`[];
@@ -32,7 +24,7 @@ export async function GET() {
     return NextResponse.json({ ok: true, markets: [], note: 'No markets configured' });
   }
 
-  const results: { address: string; priceHome: number; priceAway: number; arkivKey?: string; error?: string }[] = [];
+  const results: { address: string; priceHome: number; priceAway: number; error?: string }[] = [];
 
   await Promise.all(
     MARKET_ADDRESSES.map(async (addr) => {
@@ -42,21 +34,7 @@ export async function GET() {
           abi: LMSR_MARKET_ABI,
           functionName: 'prices',
         }) as [bigint, bigint];
-
-        const priceHome = Number(prices[0]) / 1e18;
-        const priceAway = Number(prices[1]) / 1e18;
-
-        // Write to Arkiv (best-effort — don't fail the response if Arkiv is down)
-        let arkivKey: string | undefined;
-        if (process.env.ARKIV_PRIVATE_KEY) {
-          try {
-            arkivKey = await writeLiveOdds({ marketAddress: addr, priceHome, priceAway });
-          } catch (e) {
-            console.warn('Arkiv write failed for', addr, e);
-          }
-        }
-
-        results.push({ address: addr, priceHome, priceAway, arkivKey });
+        results.push({ address: addr, priceHome: Number(prices[0]) / 1e18, priceAway: Number(prices[1]) / 1e18 });
       } catch (e) {
         results.push({ address: addr, priceHome: 0, priceAway: 0, error: String(e) });
       }

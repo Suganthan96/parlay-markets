@@ -57,7 +57,7 @@ export default function Hero() {
           <div>
             <p className="text-label text-charcoal mb-4">Powered by:</p>
             <div className="flex flex-wrap gap-x-4 gap-y-1">
-              {["1inch Aqua", "SwapVM", "Chainlink CRE", "Arkiv"].map((name) => (
+              {["1inch Aqua", "Chainlink CRE"].map((name) => (
                 <span key={name} className="text-sm font-semibold text-charcoal">
                   {name}
                 </span>

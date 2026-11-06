@@ -23,14 +23,6 @@ const sponsors = [
     bg: "var(--white)",
   },
   {
-    name: "Arkiv",
-    color: "#a855f7",
-    role: "Decentralised Data Schema",
-    what: "parlaymarkets.markets, .slips, and .results live on Arkiv's Rabdi testnet. Every market, slip, and result is a wallet-owned entity with block-level expiration. No database. No server. No single point of failure.",
-    code: "parlaymarkets.markets  →  question, prices\nparlaymarkets.slips    →  legs, stake, payout\nparlaymarkets.results  →  matchId, outcome",
-    bg: "var(--light-gray)",
-  },
-  {
     name: "Polymarket",
     color: "#00dc82",
     role: "Real-World Market Data Feed",

@@ -12,7 +12,7 @@ function Slide1() {
           <span className="text-label" style={{ color: '#444' }}>■ ETHGlobal 2026 · Hackathon Submission</span>
         </div>
         <div className="gc-3-4" style={{ background: 'var(--black)', padding: '14px 24px', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 8 }}>
-          {[['1inch Aqua','#1dc3fa'],['Chainlink CRE','#375bd2'],['Arkiv','#a855f7'],['Polymarket','var(--mint)']].map(([n,c]) => (
+          {[]) => (
             <span key={n as string} className="text-label" style={{ padding: '4px 10px', border: `1px solid ${c}`, color: c as string }}>{n}</span>
           ))}
         </div>
@@ -58,14 +58,6 @@ function Slide1() {
             <span className="text-label" style={{ color: '#375bd2', opacity: 0.5, textAlign: 'center' }}>Oracle Settlement</span>
           </div>
 
-          {/* Arkiv */}
-          <div style={{ background: '#060308', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16, padding: 32 }}>
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: 1, lineHeight: 1 }}>
-              <span style={{ fontSize: 32, fontWeight: 900, letterSpacing: '-0.04em', color: '#a855f7' }}>A</span>
-              <span style={{ fontSize: 20, fontWeight: 800, letterSpacing: '0.04em', color: '#fff', opacity: 0.9 }}>RKIV</span>
-            </div>
-            <span className="text-label" style={{ color: '#a855f7', opacity: 0.5, textAlign: 'center' }}>Decentralised Storage</span>
-          </div>
 
         </div>
       </div>
@@ -181,7 +173,7 @@ function Slide4() {
       <div style={{ padding: '14px 32px', borderBottom: '1px solid var(--app-border)', flex: '0 0 auto' }}>
         <span className="text-label" style={{ color: '#444' }}>■ 04 — How It Works</span>
         <div style={{ fontSize: 'clamp(16px,2vw,24px)', fontWeight: 900, letterSpacing: '-0.02em', color: 'var(--white)', marginTop: 4 }}>
-          How it works &nbsp;·&nbsp; <span className="text-label" style={{ color: '#555', fontWeight: 400 }}>PARLAY MARKETS · 1INCH AQUA · CHAINLINK CRE · ARKIV · POLYMARKET</span>
+          How it works &nbsp;·&nbsp; <span className="text-label" style={{ color: '#555', fontWeight: 400 }}>PARLAY MARKETS · 1INCH AQUA · CHAINLINK CRE · POLYMARKET</span>
         </div>
       </div>
 
@@ -254,12 +246,6 @@ function Slide4() {
           <text x="584" y="170" fill="#555" fontSize="10">oracle · auto-settlement</text>
           <text x="584" y="186" fill="#444" fontSize="9">watches SettlementRequested · resolves on-chain</text>
 
-          {/* Arkiv box */}
-          <rect x="568" y="228" width="606" height="85" fill="#060308" stroke="#a855f7" strokeWidth="1" strokeOpacity="0.25" rx="2"/>
-          <text x="584" y="252" fill="#a855f7" fontSize="14" fontWeight="800">Arkiv</text>
-          <text x="584" y="270" fill="#555" fontSize="10">decentralised storage · wallet-owned entities</text>
-          <text x="584" y="286" fill="#444" fontSize="9">markets · slips · results · block-level expiration</text>
-
           {/* LmsrMarket x2 box */}
           <rect x="568" y="328" width="606" height="96" fill="#031a0d" stroke="#00dc82" strokeWidth="1" strokeOpacity="0.2" rx="2"/>
           <text x="584" y="352" fill="#00dc82" fontSize="14" fontWeight="800">LmsrMarket <tspan fontSize="11" opacity="0.6">×2</tspan></text>
@@ -325,10 +311,6 @@ function Slide4() {
           <rect x="522" y="258" width="40" height="14" fill="#111" rx="2"/>
           <text x="542" y="269" textAnchor="middle" fill="#375bd2" fontSize="9" fontWeight="700">7 settle</text>
 
-          {/* log: Vault → Arkiv */}
-          <line x1="516" y1="376" x2="566" y2="276" stroke="#a855f7" strokeWidth="1" markerEnd="url(#arr)" strokeDasharray="3 2" opacity="0.6"/>
-          <rect x="522" y="338" width="30" height="13" fill="#111" rx="2"/>
-          <text x="537" y="348" textAnchor="middle" fill="#a855f7" fontSize="9" opacity="0.8">log</text>
         </svg>
       </div>
 
@@ -362,9 +344,6 @@ function Slide5() {
     { name: 'Chainlink CRE', col: '#375bd2', role: 'Oracle Settlement', bg: '#03040c',
       what: 'Custom Runtime Environment watches for SettlementRequested events. Fetches outcome from Polymarket API off-chain. Calls MarketResolver.resolve() on-chain. Zero manual work.',
       code: '① emit SettlementRequested(matchId, addr)\n② CRE fetch from Polymarket API\n③ MarketResolver.resolve(matchId, Outcome)' },
-    { name: 'Arkiv', col: '#a855f7', role: 'Decentralised Storage', bg: '#060308',
-      what: 'Markets, slip history, and oracle results stored as wallet-owned entities on Arkiv\'s Rabdi testnet. Block-level expiration. No server. No DB.',
-      code: 'parlaymarkets.markets  →  question, prices\nparlaymarkets.slips    →  legs, payout\nparlaymarkets.results  →  matchId, outcome' },
     { name: 'Polymarket', col: '#00dc82', role: 'Real-World Market Data', bg: '#030805',
       what: '30+ live binary questions from gamma-api.polymarket.com. Politics, crypto, sports, geopolitics. Each maps to an LMSR contract on-chain.',
       code: 'GET /markets?active=true&closed=false\n{ question, outcomePrices: ["0.72","0.28"] }' },
@@ -373,7 +352,7 @@ function Slide5() {
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       <div style={{ background: 'var(--black)', padding: '18px 32px', borderBottom: '1px solid var(--app-border)', flex: '0 0 auto' }}>
         <span className="text-label" style={{ color: '#444' }}>■ 05 — Sponsor Integrations</span>
-        <div style={{ fontSize: 'clamp(18px,2.2vw,28px)', fontWeight: 900, letterSpacing: '-0.02em', color: 'var(--white)', marginTop: 6 }}>Four protocols. One unified parlay primitive.</div>
+        <div style={{ fontSize: 'clamp(18px,2.2vw,28px)', fontWeight: 900, letterSpacing: '-0.02em', color: 'var(--white)', marginTop: 6 }}>Three protocols. One unified parlay primitive.</div>
       </div>
       <div className="page-grid" style={{ flex: 1, alignItems: 'stretch' }}>
         {sps.map((sp) => (
@@ -441,7 +420,7 @@ function Slide6() {
               {['Next.js 14','wagmi v2','viem','Solidity','Foundry'].map(t => (
                 <span key={t} className="text-label" style={{ padding: '3px 8px', border: '1px solid #333', color: '#666' }}>{t}</span>
               ))}
-              {[['1inch Aqua','#1dc3fa'],['Chainlink CRE','#375bd2'],['Arkiv','#a855f7'],['Polymarket','#00dc82']].map(([t,c]) => (
+              {[]) => (
                 <span key={t} className="text-label" style={{ padding: '3px 8px', border: `1px solid ${c}44`, color: c as string }}>{t}</span>
               ))}
             </div>

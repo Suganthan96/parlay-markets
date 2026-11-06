@@ -2,7 +2,6 @@ const sponsors = [
   { name: "1inch Aqua",     category: "Liquidity Layer"       },
   { name: "SwapVM",         category: "Pricing Execution"     },
   { name: "Chainlink CRE",  category: "Result Oracle"         },
-  { name: "Arkiv",          category: "On-chain Data Schema"  },
   { name: "ParlayRouter",   category: "Smart Contract"        },
   { name: "ParlayVault",    category: "Settlement"            },
 ];
@@ -32,13 +31,12 @@ export default function Clients() {
           style={{ minHeight: "clamp(220px, 28vh, 400px)" }}
         >
           <div>
-            <p className="text-label mb-6">Three open protocols, composable on-chain</p>
+            <p className="text-label mb-6">Two open protocols, composable on-chain</p>
             <p className="text-body" style={{ maxWidth: 440 }}>
               Parlay Markets is a thin coordination layer on top of infrastructure
               that already exists. 1inch Aqua holds the liquidity and prices every
               outcome via LMSR. Chainlink CRE pushes verified results on-chain the
-              moment a game ends. Arkiv stores every parlay slip, market, and desk
-              as a wallet-owned entity — no database, no server.
+              moment a game ends. No database, no server.
             </p>
           </div>
         </div>

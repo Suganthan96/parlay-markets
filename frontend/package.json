@@ -17,8 +17,7 @@
     "@rainbow-me/rainbowkit": "^2.2.1",
     "@tanstack/react-query": "^5.60.5",
     "zustand": "^5.0.1",
-    "clsx": "^2.1.1",
-    "@arkiv-network/sdk": "latest"
+    "clsx": "^2.1.1"
   },
   "devDependencies": {
     "typescript": "^5",

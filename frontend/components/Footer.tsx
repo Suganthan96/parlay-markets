@@ -220,7 +220,7 @@ export default function Footer() {
           style={{ background: "var(--mint)", minHeight: 52 }}
         >
           <p className="text-label opacity-50" style={{ color: "var(--black)" }}>
-            Built on 1inch Aqua · SwapVM · Chainlink CRE · Arkiv
+            Built on 1inch Aqua · Chainlink CRE
           </p>
         </div>
       </div>

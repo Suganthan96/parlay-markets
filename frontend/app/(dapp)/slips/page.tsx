@@ -66,7 +66,7 @@ export default function SlipsPage() {
     <div style={{ maxWidth: 1440, margin: '0 auto', borderLeft: '1px solid var(--border)', borderRight: '1px solid var(--border)' }}>
       {/* Headline */}
       <div style={{ background: 'var(--white)', padding: 'clamp(32px,5vw,72px) clamp(24px,4vw,56px)', borderBottom: '1px solid var(--border)' }}>
-        <p className="text-label" style={{ color: '#aaa', marginBottom: 16, fontSize: 10 }}>■ TOP SLIPS · ARKIV</p>
+        <p className="text-label" style={{ color: '#aaa', marginBottom: 16, fontSize: 10 }}>■ TOP SLIPS · ON-CHAIN</p>
         <h1 className="text-display" style={{ fontSize: 'clamp(56px,9vw,140px)' }}>COPY THE<br/>CROWD.</h1>
       </div>
 

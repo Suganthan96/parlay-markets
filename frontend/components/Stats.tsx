@@ -8,8 +8,8 @@ export default function Stats() {
           className="gc-1-2 flex flex-col justify-between cell-pad"
           style={{ background: "var(--white)", minHeight: "clamp(140px, 20vh, 260px)" }}
         >
-          <span className="text-stat">3</span>
-          <span className="text-label opacity-70 mt-4">Protocols — 1inch Aqua · Chainlink CRE · Arkiv</span>
+          <span className="text-stat">2</span>
+          <span className="text-label opacity-70 mt-4">Protocols — 1inch Aqua · Chainlink CRE</span>
         </div>
         {/* 5 — max legs */}
         <div

@@ -11,7 +11,7 @@ const inter = Inter({
 
 export const metadata: Metadata = {
   title: "Parlay Markets — the first parlay on 1inch Aqua",
-  description: "On-chain parlays on 1inch Aqua. Live LMSR prices, one ticket, LP money stays in the wallet. Settled by Chainlink CRE. Data on Arkiv.",
+  description: "On-chain parlays on 1inch Aqua. Live LMSR prices, one ticket, LP money stays in the wallet. Settled by Chainlink CRE.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

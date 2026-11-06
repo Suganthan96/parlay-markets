@@ -12,12 +12,6 @@ const stack = [
     bg: "var(--mint)",
   },
   {
-    name: "Arkiv",
-    role: "On-chain Data Schema",
-    bio: "Schemas parlaymarkets.markets, .slips, and .results live on Arkiv's Rabdi testnet. Every market, parlay slip, and oracle result is a wallet-owned entity with block-level expiration — no server, no database.",
-    bg: "var(--light-gray)",
-  },
-  {
     name: "SwapVM",
     role: "Parlay Pricing Engine",
     bio: "The ParlayPrice instruction multiplies LMSR outcome probabilities across all selected legs: p_i = e^(q_i/b) / Σ e^(q_j/b). The product of all leg prices plus a 10% margin gives the final ticket price.",
