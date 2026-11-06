@@ -31,15 +31,11 @@ function Step({ n, title, done, active }: { n: string; title: string; done: bool
 
 function LpShipWizard() {
   const { address } = useAccount();
-  const [lmsrAmount,    setLmsrAmount]    = useState('100');
+  const [lmsrAmount,    setLmsrAmount]    = useState('5');
   const [bValue,        setBValue]        = useState('100');
   const [reserveAmount, setReserveAmount] = useState('500');
   const [selectedMkt,   setSelectedMkt]   = useState(MARKET_ADDRESSES[0] ?? '');
-  const [step,          setStep]          = useState(1);
-  const [lmsrDone,      setLmsrDone]      = useState(false);
-  const [aquaApproved,  setAquaApproved]  = useState(false);
   const [aquaShipped,   setAquaShipped]   = useState(false);
-  const [stratHash,     setStratHash]     = useState('');
 
   const { ship,         isPending: isShipping  } = useShipLiquidity(selectedMkt as `0x${string}`);
   const { approveAqua,  isPending: isApproving } = useApproveAqua();
@@ -47,30 +43,32 @@ function LpShipWizard() {
   const { requestSettlement } = useRequestSettlement();
 
   const aquaAllowance = useAquaAllowance(address);
-  const reserveRaw = parseUnits(reserveAmount || '0', 6);
-  const hasAllowance = aquaAllowance >= reserveRaw && reserveRaw > 0n;
+  const reserveRaw    = parseUnits(reserveAmount || '0', 6);
+
+  // Real on-chain state
+  const hasAllowance = aquaAllowance > 0n;
+  const isLpActive   = hasAllowance || aquaShipped || aquaShipSuccess;
+
+  // Derive step from real chain state
+  const step     = isLpActive ? 4 : hasAllowance ? 3 : 2;
+  const lmsrDone = true; // markets already seeded from deploy
+  const aquaApproved = hasAllowance;
 
   async function handleLmsrShip() {
     const amt = parseFloat(lmsrAmount);
     const b   = BigInt(Math.round(parseFloat(bValue) * 1e18));
     if (!amt || !b) return;
     await ship(amt, b);
-    setLmsrDone(true);
-    setStep(2);
   }
 
   async function handleApproveAqua() {
     await approveAqua(reserveRaw);
-    setAquaApproved(true);
-    setStep(3);
   }
 
   async function handleShipAqua() {
     const markets = MARKET_ADDRESSES.length > 0 ? MARKET_ADDRESSES : [selectedMkt as `0x${string}`];
-    const hash = await lpShipAqua(markets as `0x${string}`[], reserveRaw);
+    await lpShipAqua(markets as `0x${string}`[], reserveRaw);
     setAquaShipped(true);
-    setStratHash(DEFAULT_STRATEGY_HASH);
-    setStep(4);
   }
 
   return (
@@ -78,10 +76,10 @@ function LpShipWizard() {
       {/* Steps */}
       <div style={{ background: 'var(--white)', padding: '24px' }}>
         <span className="text-label" style={{ display: 'block', marginBottom: 20, fontSize: 10 }}>■ LP ONBOARDING STEPS</span>
-        <Step n="1" title="Seed LMSR pricing"      done={lmsrDone}   active={step === 1} />
-        <Step n="2" title="Approve Aqua"            done={aquaApproved || hasAllowance} active={step === 2} />
-        <Step n="3" title="Ship to Aqua"            done={aquaShipped} active={step === 3} />
-        <Step n="4" title="Ready — users can buy"  done={aquaShipped} active={step === 4} />
+        <Step n="1" title="Seed LMSR pricing"     done={lmsrDone}   active={step === 1} />
+        <Step n="2" title="Approve Aqua"           done={hasAllowance} active={step === 2} />
+        <Step n="3" title="Ship to Aqua"           done={isLpActive}   active={step === 3} />
+        <Step n="4" title="Ready — users can buy"  done={isLpActive}   active={step === 4} />
 
         <div style={{ marginTop: 24, padding: '16px', background: '#f5f5f5', fontSize: 11, lineHeight: 1.6 }}>
           <div style={{ fontWeight: 700, marginBottom: 8, fontSize: 10 }}>■ KEY: YOUR USDC STAYS IN YOUR WALLET</div>
@@ -137,11 +135,7 @@ function LpShipWizard() {
             </div>
             {hasAllowance ? (
               <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-                <span className="text-label" style={{ fontSize: 10, color: 'var(--mint)' }}>✓ ALREADY APPROVED ({Number(formatUnits(aquaAllowance, 6)).toFixed(2)} USDC)</span>
-                <button onClick={() => { setAquaApproved(true); setStep(3); }}
-                  style={{ padding: '10px 20px', background: 'var(--mint)', border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
-                  CONTINUE →
-                </button>
+                <span className="text-label" style={{ fontSize: 10, color: 'var(--mint)' }}>✓ ALREADY APPROVED ON-CHAIN ({Number(formatUnits(aquaAllowance, 6)).toFixed(2)} USDC)</span>
               </div>
             ) : (
               <button onClick={handleApproveAqua} disabled={isApproving || !reserveAmount}
@@ -173,14 +167,16 @@ function LpShipWizard() {
 
         {step === 4 && (
           <>
-            <span className="text-label" style={{ display: 'block', marginBottom: 20, fontSize: 10, color: 'var(--mint)' }}>■ ✓ SHIPPED TO 1INCH AQUA — READY FOR USERS</span>
+            <span className="text-label" style={{ display: 'block', marginBottom: 20, fontSize: 10, color: 'var(--mint)' }}>■ ✓ LP ACTIVE ON-CHAIN — READY FOR USERS</span>
             <div style={{ background: 'var(--mint)', padding: '20px', marginBottom: 20 }}>
               <div style={{ fontWeight: 800, fontSize: 18, marginBottom: 8 }}>Virtual liquidity active</div>
               <div style={{ fontSize: 12, lineHeight: 1.6 }}>Your USDC is still in your wallet. When users buy parlays through AquaParlayRouter, Aqua calls <code>transferFrom(you)</code> only on payouts.</div>
             </div>
-            <div style={{ background: '#f5f5f5', padding: '16px', fontFamily: 'monospace', fontSize: 10, marginBottom: 20 }}>
-              <div>Strategy hash: {DEFAULT_STRATEGY_HASH}</div>
-              <div>Aqua router: {AQUA_PARLAY_ROUTER_ADDRESS}</div>
+            <div style={{ background: '#f5f5f5', padding: '16px', fontFamily: 'monospace', fontSize: 10, marginBottom: 20, lineHeight: 2 }}>
+              <div><span style={{ color: '#888' }}>Aqua allowance (on-chain):</span> {Number(formatUnits(aquaAllowance, 6)).toFixed(2)} USDC ✓</div>
+              <div><span style={{ color: '#888' }}>Strategy hash:</span> {DEFAULT_STRATEGY_HASH}</div>
+              <div><span style={{ color: '#888' }}>Aqua router:</span> {AQUA_PARLAY_ROUTER_ADDRESS}</div>
+              <div><span style={{ color: '#888' }}>LP wallet:</span> {address}</div>
             </div>
           </>
         )}
@@ -207,10 +203,10 @@ function MarketRow({ address }: { address: `0x${string}` }) {
   const matchId  = `0x${Buffer.from(`${info.homeTeam}-${info.awayTeam}-${info.kickoff}`).toString('hex').padEnd(64, '0').slice(0, 64)}` as `0x${string}`;
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr auto', padding: '16px 24px', borderBottom: '1px solid var(--border)', alignItems: 'center', gap: 8 }}>
+    <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr auto', padding: '16px 24px', borderBottom: '1px solid var(--border)', alignItems: 'center', gap: 8 }}>
       <div>
-        <span style={{ fontWeight: 600 }}>{info.homeTeam} vs {info.awayTeam}</span>
-        <div className="text-label" style={{ fontSize: 9, color: '#aaa', marginTop: 2 }}>{address.slice(0, 20)}…</div>
+        <span style={{ fontWeight: 700, fontFamily: 'monospace', fontSize: 12 }}>{address.slice(0, 10)}…{address.slice(-6)}</span>
+        <div className="text-label" style={{ fontSize: 9, color: '#aaa', marginTop: 2 }}>LMSR MARKET · 2 OUTCOMES</div>
       </div>
       <span>
         <span className="text-label" style={{ fontSize: 10, padding: '3px 8px', background: resolved ? '#eee' : 'var(--mint)' }}>
@@ -218,9 +214,6 @@ function MarketRow({ address }: { address: `0x${string}` }) {
         </span>
       </span>
       <span style={{ fontWeight: 600 }}>{info.homePrice.toFixed(3)} / {info.awayPrice.toFixed(3)}</span>
-      <span className="text-label" style={{ fontSize: 10 }}>
-        {resolved ? `WIN: ${info.result === 1 ? info.homeTeam : info.result === 2 ? info.awayTeam : 'DRAW'}` : 'OPEN'}
-      </span>
       <div style={{ display: 'flex', gap: 6 }}>
         {!resolved && (
           <button onClick={() => requestSettlement(matchId, address)} disabled={isRequesting}
@@ -300,8 +293,8 @@ export default function LpPage() {
           <span className="text-label" style={{ fontSize: 10 }}>■ MARKET STATUS · REQUEST SETTLEMENT</span>
           <span className="text-label" style={{ fontSize: 9, color: '#aaa' }}>SETTLE → emits event → Chainlink CRE resolves</span>
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr auto', padding: '10px 24px', borderBottom: '1px solid var(--border)', background: '#fafafa' }}>
-          {['MATCH', 'STATUS', 'ODDS (H/A)', 'RESULT', 'ACTION'].map(h => (
+        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr auto', padding: '10px 24px', borderBottom: '1px solid var(--border)', background: '#fafafa' }}>
+          {['CONTRACT', 'STATUS', 'ODDS (0/1)', 'ACTION'].map(h => (
             <span key={h} className="text-label" style={{ fontSize: 10, color: '#888' }}>{h}</span>
           ))}
         </div>

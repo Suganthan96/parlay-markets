@@ -113,32 +113,66 @@ export default function ParlayPage() {
             />
           </div>
 
-          {/* Pay / Win */}
+          {/* Pay / Win summary row */}
           {stake > 0 && legs.length > 0 && (
-            <div className="page-grid" style={{ background: 'var(--border)', borderBottom: '1px solid var(--border)' }}>
-              <div className="gc-1-2" style={{ background: 'var(--white)', padding: '20px 24px' }}>
-                <span className="text-label" style={{ display: 'block', marginBottom: 8, fontSize: 10 }}>■ YOU PAY</span>
-                <div style={{ fontSize: 'clamp(28px,4vw,48px)', fontWeight: 800 }}>${stake.toFixed(2)}</div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', borderBottom: '1px solid var(--border)' }}>
+              <div style={{ padding: '16px 24px', borderRight: '1px solid var(--border)' }}>
+                <div className="text-label" style={{ fontSize: 9, color: '#888', marginBottom: 4 }}>YOU PAY</div>
+                <div style={{ fontSize: 28, fontWeight: 800 }}>${stake.toFixed(2)}</div>
               </div>
-              <div className="gc-3-4" style={{ background: 'var(--mint)', padding: '20px 24px' }}>
-                <span className="text-label" style={{ display: 'block', marginBottom: 8, fontSize: 10 }}>■ YOU WIN</span>
-                <div style={{ fontSize: 'clamp(28px,4vw,48px)', fontWeight: 800 }}>
-                  ${quoteLoading ? '…' : displayPayout.toFixed(2)}
-                </div>
+              <div style={{ padding: '16px 24px', background: 'var(--mint)' }}>
+                <div className="text-label" style={{ fontSize: 9, color: '#555', marginBottom: 4 }}>YOU WIN</div>
+                <div style={{ fontSize: 28, fontWeight: 800 }}>${quoteLoading ? '…' : displayPayout.toFixed(2)}</div>
               </div>
             </div>
           )}
 
-          {/* Actions */}
-          <div style={{ padding: '20px 24px', display: 'flex', gap: 12 }}>
+          {/* OddsFlow-style description rows */}
+          {legs.length > 0 && (
+            <div style={{ borderBottom: '1px solid var(--border)' }}>
+              {[
+                {
+                  label: 'Moves',
+                  value: stake > 0
+                    ? `$${stake.toFixed(2)} USDC from your wallet via 1inch Aqua`
+                    : 'Enter a stake to see what moves',
+                },
+                {
+                  label: 'What happens',
+                  value: stake > 0
+                    ? `You receive a parlay ticket. If all ${legs.length} leg${legs.length > 1 ? 's' : ''} resolve in your favor, the ticket pays out $${quoteLoading ? '…' : displayPayout.toFixed(2)} USDC.`
+                    : `You receive a parlay ticket covering ${legs.length} leg${legs.length > 1 ? 's' : ''}. It pays out if every selected outcome wins.`,
+                },
+                {
+                  label: 'What does not',
+                  value: stake > 0
+                    ? `Parlay Markets gets no approval beyond the exact stake of $${stake.toFixed(2)} USDC.`
+                    : 'Parlay Markets gets no approval beyond the exact stake amount.',
+                },
+                {
+                  label: 'Undo',
+                  value: `Irreversible once confirmed. ${legs.length > 0 ? `Ticket pays $${quoteLoading ? '…' : displayPayout.toFixed(2)} USDC if ${legs.map(l => l.outcome).join(' and ')} win${legs.length > 1 ? '' : 's'}.` : ''}`,
+                },
+              ].map(({ label, value }) => (
+                <div key={label} style={{ display: 'grid', gridTemplateColumns: '110px 1fr', borderBottom: '1px solid var(--border)', padding: '12px 24px', gap: 16, alignItems: 'start' }}>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: '#888', paddingTop: 1 }}>{label}</span>
+                  <span style={{ fontSize: 13, lineHeight: 1.5, color: 'var(--black)' }}>{value}</span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Big buy button */}
+          <div style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 12 }}>
             <BuyParlayButton
               markets={onChainMarkets}
               outcomeIdxs={legs.map(l => l.outcomeIdx ?? 0)}
               stakeUsdc={stake}
               hasOnChain={hasOnChain}
+              stakeLabel={stake > 0 ? `Buy parlay for $${stake.toFixed(2)} USDC` : undefined}
               onSuccess={clearLegs}
             />
-            <button style={{ flex: 1, padding: '14px', background: 'var(--white)', color: 'var(--black)', border: '1px solid var(--black)', cursor: 'pointer', fontWeight: 700, fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+            <button style={{ width: '100%', padding: '14px', background: 'var(--white)', color: 'var(--black)', border: '1px solid var(--black)', cursor: 'pointer', fontWeight: 700, fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
               SHARE SLIP →
             </button>
           </div>

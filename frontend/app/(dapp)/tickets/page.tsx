@@ -6,6 +6,7 @@ import { useReadContract, useReadContracts } from 'wagmi';
 import { formatUnits } from 'viem';
 import { PARLAY_VAULT_ABI, PARLAY_VAULT_ADDRESS, LMSR_MARKET_ABI } from '@/lib/contracts';
 import { useCashOut, useClaim } from '@/lib/hooks';
+import { useParlayStore } from '@/lib/store';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -17,12 +18,15 @@ function fmt(raw: bigint | undefined): string {
 // ── Leg row ───────────────────────────────────────────────────────────────────
 
 function LegRow({ ticketId, legIdx }: { ticketId: bigint; legIdx: number }) {
+  const ticketMeta = useParlayStore(s => s.ticketMeta);
+  const storedLeg  = ticketMeta[ticketId.toString()]?.legs[legIdx];
+
   const { data } = useReadContracts({
     contracts: [
       { address: PARLAY_VAULT_ADDRESS, abi: PARLAY_VAULT_ABI, functionName: 'ticketLeg', args: [ticketId, legIdx] },
     ],
   });
-  const leg = data?.[0]?.result as [string, bigint, bigint] | undefined;
+  const leg        = data?.[0]?.result as [string, bigint, bigint] | undefined;
   const marketAddr = leg?.[0] as `0x${string}` | undefined;
   const outcomeIdx = leg?.[1];
   const price      = leg?.[2];
@@ -36,29 +40,38 @@ function LegRow({ ticketId, legIdx }: { ticketId: bigint; legIdx: number }) {
     query: { enabled: !!marketAddr },
   });
 
-  const homeTeam   = names?.[0]?.result as string | undefined;
-  const awayTeam   = names?.[1]?.result as string | undefined;
-  const marketResult = Number(names?.[2]?.result ?? 0); // 0=unresolved, 1=home, 2=away, 3=draw
+  const homeTeam     = names?.[0]?.result as string | undefined;
+  const awayTeam     = names?.[1]?.result as string | undefined;
+  const marketResult = Number(names?.[2]?.result ?? 0);
 
   const pickedHome = Number(outcomeIdx ?? 0) === 0;
-  const pickedTeam = pickedHome ? homeTeam : awayTeam;
-  const matchLabel = homeTeam && awayTeam ? `${homeTeam} vs ${awayTeam}` : marketAddr?.slice(0, 10) + '…';
 
-  // Determine leg outcome
+  // Use stored question label if available, otherwise show contract address (not football names)
+  let displayLabel: string;
+  if (storedLeg) {
+    displayLabel = storedLeg.question;
+  } else if (marketAddr) {
+    const short = `${marketAddr.slice(0, 6)}…${marketAddr.slice(-4)}`;
+    displayLabel = `${short} · LEG ${legIdx + 1}`;
+  } else {
+    displayLabel = '…';
+  }
+
   let legStatus: 'live' | 'won' | 'lost' = 'live';
   if (marketResult !== 0) {
-    const wonOutcome = marketResult - 1; // 0=home, 1=away
+    const wonOutcome = marketResult - 1;
     legStatus = wonOutcome === Number(outcomeIdx ?? 0) ? 'won' : 'lost';
   }
 
   const bg     = legStatus === 'won' ? 'var(--mint)' : legStatus === 'lost' ? '#fee' : 'var(--light-gray, #f4f4f4)';
   const border = legStatus === 'lost' ? '1px solid #FF5A4E' : '1px solid var(--border)';
   const col    = legStatus === 'lost' ? '#FF5A4E' : 'var(--black)';
+  const priceDisplay = storedLeg ? storedLeg.price.toFixed(2) : (price ? (Number(price) / 1e18).toFixed(2) : '?');
 
   return (
-    <span style={{ padding: '3px 10px', background: bg, border, color: col, fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', display: 'inline-block' }}>
+    <span style={{ padding: '5px 12px', background: bg, border, color: col, fontSize: 11, fontWeight: 600, letterSpacing: '0.03em', display: 'inline-block', maxWidth: '100%', wordBreak: 'break-word' }}>
       {legStatus === 'won' ? '✓' : legStatus === 'lost' ? '✕' : '●'}{' '}
-      {pickedTeam ?? '?'} · {matchLabel} · {price ? (Number(price) / 1e18).toFixed(2) : '?'}
+      {displayLabel} · {priceDisplay}
     </span>
   );
 }
