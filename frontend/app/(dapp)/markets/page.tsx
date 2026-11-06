@@ -65,14 +65,21 @@ function OnChainCard({ address }: { address: `0x${string}` }) {
             disabled={inParlay}
             style={{ flex: 1, padding: '10px', background: inParlay ? 'var(--mint)' : 'var(--black)', color: inParlay ? 'var(--black)' : 'var(--white)', border: 'none', cursor: inParlay ? 'default' : 'pointer', fontWeight: 700, fontSize: 10, letterSpacing: '0.08em', textTransform: 'uppercase' }}
           >
-            {inParlay ? '✓ ADDED' : `+ ${info.homeTeam}`}
+            {inParlay ? '✓' : `+ ${info.homeTeam}`}
+          </button>
+          <button
+            onClick={() => addLeg({ marketId: `${address}-draw`, marketLabel: `${info.homeTeam} vs ${info.awayTeam}`, outcome: 'DRAW', price: 1 - info.homePrice - info.awayPrice, marketAddress: address, outcomeIdx: 2 })}
+            disabled={hasMarket(`${address}-draw`)}
+            style={{ padding: '10px 12px', background: hasMarket(`${address}-draw`) ? 'var(--mint)' : 'transparent', color: 'var(--black)', border: '1px solid var(--border)', cursor: hasMarket(`${address}-draw`) ? 'default' : 'pointer', fontWeight: 700, fontSize: 10, letterSpacing: '0.06em', textTransform: 'uppercase' }}
+          >
+            {hasMarket(`${address}-draw`) ? '✓' : 'DRAW'}
           </button>
           <button
             onClick={() => addLeg({ marketId: `${address}-away`, marketLabel: `${info.homeTeam} vs ${info.awayTeam}`, outcome: info.awayTeam!, price: info.awayPrice, marketAddress: address, outcomeIdx: 1 })}
             disabled={hasMarket(`${address}-away`)}
             style={{ flex: 1, padding: '10px', background: hasMarket(`${address}-away`) ? 'var(--mint)' : 'var(--white)', color: 'var(--black)', border: '1px solid var(--black)', cursor: hasMarket(`${address}-away`) ? 'default' : 'pointer', fontWeight: 700, fontSize: 10, letterSpacing: '0.08em', textTransform: 'uppercase' }}
           >
-            {hasMarket(`${address}-away`) ? '✓ ADDED' : `+ ${info.awayTeam}`}
+            {hasMarket(`${address}-away`) ? '✓' : `+ ${info.awayTeam}`}
           </button>
         </div>
       )}
