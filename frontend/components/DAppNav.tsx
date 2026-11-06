@@ -122,34 +122,6 @@ export function DAppNav() {
         </div>
       </div>
 
-      {/* Mobile */}
-      <div className="md:hidden" style={{ display: 'flex', alignItems: 'center', padding: '0 16px', height: 52, gap: 8, overflowX: 'auto', borderLeft: '1px solid var(--border)', borderRight: '1px solid var(--border)' }}>
-        <Link href="/" style={{ display: 'flex', alignItems: 'center', gap: 6, textDecoration: 'none', color: 'var(--black)', marginRight: 8, flexShrink: 0 }}>
-          <AspenLogo size={16} />
-        </Link>
-        {NAV.map(n => {
-          const active = path === n.href;
-          return (
-            <Link
-              key={n.href}
-              href={n.href}
-              style={{
-                padding: '6px 12px',
-                textDecoration: 'none',
-                fontWeight: 600,
-                fontSize: 10,
-                letterSpacing: '0.08em',
-                textTransform: 'uppercase',
-                color: active ? 'var(--white)' : 'var(--black)',
-                background: active ? 'var(--black)' : 'var(--light-gray)',
-                flexShrink: 0,
-              }}
-            >
-              {n.label}
-            </Link>
-          );
-        })}
-      </div>
     </header>
   );
 }
