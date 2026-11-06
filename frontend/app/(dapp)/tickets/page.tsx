@@ -207,7 +207,7 @@ function TicketCard({ ticketId }: { ticketId: bigint }) {
             disabled={isClaiming}
             style={{ flex: 1, padding: '16px', background: '#16a34a', color: '#fff', border: 'none', cursor: 'pointer', fontWeight: 800, fontSize: 13, letterSpacing: '0.06em', textTransform: 'uppercase' }}
           >
-            {isClaiming ? 'CLAIMING…' : `CLAIM $${fmt(payout)} →`}
+            {isClaiming ? 'CLAIMING…' : 'CLAIM →'}
           </button>
         )}
         {claimed && (
