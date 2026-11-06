@@ -7,7 +7,9 @@ import {
 import { parseUnits, formatUnits } from 'viem';
 import {
   ERC20_ABI, LMSR_MARKET_ABI, PARLAY_ROUTER_ABI, PARLAY_VAULT_ABI, MARKET_RESOLVER_ABI,
+  AQUA_PARLAY_ROUTER_ABI,
   MOCK_USDC_ADDRESS, PARLAY_ROUTER_ADDRESS, PARLAY_VAULT_ADDRESS, MARKET_RESOLVER_ADDRESS,
+  AQUA_PARLAY_ROUTER_ADDRESS, AQUA_ADDRESS, MARKET_ADDRESSES,
 } from './contracts';
 
 const WAD = 1_000_000_000_000_000_000n; // 1e18
@@ -256,6 +258,81 @@ export function useResolveMarket() {
     });
   }
   return { resolveMarket, isPending, isSuccess, txHash };
+}
+
+// ── AquaParlayRouter ──────────────────────────────────────────────────────────
+
+export function useAquaAllowance(owner?: `0x${string}`) {
+  const { data } = useReadContract({
+    address: MOCK_USDC_ADDRESS,
+    abi: ERC20_ABI,
+    functionName: 'allowance',
+    args: owner ? [owner, AQUA_ADDRESS] : undefined,
+    query: { enabled: !!owner, refetchInterval: 5_000 },
+  });
+  return data ?? 0n;
+}
+
+export function useApproveAqua() {
+  const { writeContractAsync, isPending } = useWriteContract();
+  async function approveAqua(amount: bigint) {
+    return writeContractAsync({
+      address: MOCK_USDC_ADDRESS,
+      abi: ERC20_ABI,
+      functionName: 'approve',
+      args: [AQUA_ADDRESS, amount],
+    });
+  }
+  return { approveAqua, isPending };
+}
+
+export function useLpShipAqua() {
+  const { writeContractAsync, isPending, data: txHash } = useWriteContract();
+  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash: txHash });
+  async function lpShipAqua(markets: `0x${string}`[], payoutReserve: bigint) {
+    return writeContractAsync({
+      address: AQUA_PARLAY_ROUTER_ADDRESS,
+      abi: AQUA_PARLAY_ROUTER_ABI,
+      functionName: 'lpShipAqua',
+      args: [markets, payoutReserve],
+    });
+  }
+  return { lpShipAqua, isPending, isConfirming, isSuccess, txHash };
+}
+
+export function useLpDockAqua() {
+  const { writeContractAsync, isPending, data: txHash } = useWriteContract();
+  const { isSuccess } = useWaitForTransactionReceipt({ hash: txHash });
+  async function lpDockAqua(strategyHash: `0x${string}`) {
+    return writeContractAsync({
+      address: AQUA_PARLAY_ROUTER_ADDRESS,
+      abi: AQUA_PARLAY_ROUTER_ABI,
+      functionName: 'lpDockAqua',
+      args: [strategyHash],
+    });
+  }
+  return { lpDockAqua, isPending, isSuccess };
+}
+
+export function useBuyParlayViaAqua() {
+  const { writeContractAsync, isPending, data: txHash } = useWriteContract();
+  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash: txHash });
+  async function buyParlayViaAqua(
+    lp: `0x${string}`,
+    strategyHash: `0x${string}`,
+    markets: `0x${string}`[],
+    outcomes: bigint[],
+    stakeUsdc: number,
+    minPayout: bigint = 0n,
+  ) {
+    return writeContractAsync({
+      address: AQUA_PARLAY_ROUTER_ADDRESS,
+      abi: AQUA_PARLAY_ROUTER_ABI,
+      functionName: 'buyParlay',
+      args: [lp, strategyHash, markets, outcomes, parseUnits(stakeUsdc.toString(), 6), minPayout],
+    });
+  }
+  return { buyParlayViaAqua, isPending, isConfirming, isSuccess, txHash };
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────

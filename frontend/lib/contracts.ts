@@ -12,9 +12,12 @@ export const MOCK_USDC_ADDRESS       = (process.env.NEXT_PUBLIC_MOCK_USDC       
 export const MARKET_ADDRESSES: `0x${string}`[] =
   (process.env.NEXT_PUBLIC_MARKETS ?? '').split(',').filter(Boolean) as `0x${string}`[];
 
-// 1inch Aqua (same address on all chains including Sepolia — confirm at 1inch booth)
+// 1inch Aqua (deployed on Sepolia)
 export const AQUA_ADDRESS        = '0x1111113CCf1426A8E30e2bfF5E005d929bF6a90a' as `0x${string}`;
-export const AQUA_ROUTER_ADDRESS = '0x111111338c5091E8440b67B168bAe16a668AC0De' as `0x${string}`;
+// AquaParlayRouter — integrates Aqua.pull() for end-to-end LP→user flow
+export const AQUA_PARLAY_ROUTER_ADDRESS = (process.env.NEXT_PUBLIC_AQUA_ROUTER ?? '0x169c3A8efC5E324f0BEb9A95A58D2C5b20971F2c') as `0x${string}`;
+// Pre-computed strategy hash for [MARKET_A, MARKET_B]
+export const DEFAULT_STRATEGY_HASH = (process.env.NEXT_PUBLIC_STRATEGY_HASH ?? '0x98c1726b31c4183a70e8f31e637ea12290fa9e0910ce5a0f6874ba44e9f2d87f') as `0x${string}`;
 
 // Chainlink CRE Forwarder on Sepolia
 export const CRE_FORWARDER_ADDRESS = '0xf8344cfd5c43616a4366c34e3eee75af79a74482' as `0x${string}`;
@@ -107,6 +110,71 @@ export const PARLAY_VAULT_ABI = [
       { name: 'stakeUsdc', type: 'uint256', indexed: false },
       { name: 'payout',    type: 'uint256', indexed: false },
       { name: 'legCount',  type: 'uint8',   indexed: false },
+    ],
+  },
+] as const;
+
+export const AQUA_PARLAY_ROUTER_ABI = [
+  {
+    name: 'lpShipAqua', type: 'function', stateMutability: 'nonpayable',
+    inputs: [
+      { name: 'markets',       type: 'address[]' },
+      { name: 'payoutReserve', type: 'uint256'   },
+    ],
+    outputs: [{ name: 'strategyHash', type: 'bytes32' }],
+  },
+  {
+    name: 'lpDockAqua', type: 'function', stateMutability: 'nonpayable',
+    inputs: [{ name: 'strategyHash', type: 'bytes32' }],
+    outputs: [],
+  },
+  {
+    name: 'buyParlay', type: 'function', stateMutability: 'nonpayable',
+    inputs: [
+      { name: 'lp',           type: 'address'   },
+      { name: 'strategyHash', type: 'bytes32'   },
+      { name: 'markets',      type: 'address[]' },
+      { name: 'outcomes',     type: 'uint256[]' },
+      { name: 'stakeUsdc',    type: 'uint256'   },
+      { name: 'minPayout',    type: 'uint256'   },
+    ],
+    outputs: [{ name: 'ticketId', type: 'uint256' }],
+  },
+  {
+    name: 'quoteParlay', type: 'function', stateMutability: 'view',
+    inputs: [
+      { name: 'markets',   type: 'address[]' },
+      { name: 'outcomes',  type: 'uint256[]' },
+      { name: 'stakeUsdc', type: 'uint256'   },
+    ],
+    outputs: [
+      { name: 'combinedPriceWad', type: 'uint256' },
+      { name: 'payoutUsdc',       type: 'uint256' },
+    ],
+  },
+  {
+    name: 'strategyHashFor', type: 'function', stateMutability: 'pure',
+    inputs: [{ name: 'markets', type: 'address[]' }],
+    outputs: [{ name: '', type: 'bytes32' }],
+  },
+  {
+    name: 'LiquidityShippedToAqua', type: 'event',
+    inputs: [
+      { name: 'lp',            type: 'address', indexed: true },
+      { name: 'strategyHash',  type: 'bytes32', indexed: true },
+      { name: 'payoutReserve', type: 'uint256', indexed: false },
+    ],
+  },
+  {
+    name: 'ParlayBought', type: 'event',
+    inputs: [
+      { name: 'ticketId',     type: 'uint256', indexed: true  },
+      { name: 'buyer',        type: 'address', indexed: true  },
+      { name: 'lp',           type: 'address', indexed: true  },
+      { name: 'strategyHash', type: 'bytes32', indexed: false },
+      { name: 'stakeUsdc',    type: 'uint256', indexed: false },
+      { name: 'payoutUsdc',   type: 'uint256', indexed: false },
+      { name: 'legCount',     type: 'uint8',   indexed: false },
     ],
   },
 ] as const;

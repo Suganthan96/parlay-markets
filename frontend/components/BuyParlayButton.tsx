@@ -3,8 +3,8 @@
 import { useState } from 'react';
 import { useAccount } from 'wagmi';
 import { parseUnits } from 'viem';
-import { useApproveUsdc, useBuyParlay, useUsdcAllowance } from '@/lib/hooks';
-import { PARLAY_ROUTER_ADDRESS } from '@/lib/contracts';
+import { useApproveUsdc, useBuyParlayViaAqua, useUsdcAllowance } from '@/lib/hooks';
+import { AQUA_PARLAY_ROUTER_ADDRESS, DEFAULT_STRATEGY_HASH } from '@/lib/contracts';
 
 interface LegMeta {
   market:  string;
@@ -15,24 +15,33 @@ interface LegMeta {
 }
 
 interface Props {
-  markets:     `0x${string}`[];
-  outcomeIdxs: number[];
-  stakeUsdc:   number;
-  hasOnChain:  boolean;
-  legsMeta?:   LegMeta[];   // optional rich leg data for Arkiv
-  onSuccess?:  () => void;
+  markets:      `0x${string}`[];
+  outcomeIdxs:  number[];
+  stakeUsdc:    number;
+  hasOnChain:   boolean;
+  lp?:          `0x${string}`;          // defaults to deployer (env or hardcoded)
+  strategyHash?: `0x${string}`;         // defaults to DEFAULT_STRATEGY_HASH
+  legsMeta?:    LegMeta[];
+  onSuccess?:   () => void;
 }
 
-export default function BuyParlayButton({ markets, outcomeIdxs, stakeUsdc, hasOnChain, legsMeta, onSuccess }: Props) {
+const DEFAULT_LP = (process.env.NEXT_PUBLIC_DEPLOYER ?? '0x588F6b3169F60176c1143f8BaB47bCf3DeEbECdc') as `0x${string}`;
+
+export default function BuyParlayButton({
+  markets, outcomeIdxs, stakeUsdc, hasOnChain,
+  lp = DEFAULT_LP,
+  strategyHash = DEFAULT_STRATEGY_HASH,
+  legsMeta, onSuccess,
+}: Props) {
   const { address, isConnected } = useAccount();
   const [approving, setApproving] = useState(false);
 
-  const stakeRaw = stakeUsdc > 0 ? parseUnits(stakeUsdc.toString(), 6) : 0n;
-  const allowance = useUsdcAllowance(address, PARLAY_ROUTER_ADDRESS);
+  const stakeRaw   = stakeUsdc > 0 ? parseUnits(stakeUsdc.toString(), 6) : 0n;
+  const allowance  = useUsdcAllowance(address, AQUA_PARLAY_ROUTER_ADDRESS);
   const needsApproval = stakeRaw > 0n && allowance < stakeRaw;
 
-  const { approve, isPending: isApproving } = useApproveUsdc();
-  const { buyParlay, isPending, isConfirming, isSuccess, txHash } = useBuyParlay();
+  const { approve,          isPending: isApproving } = useApproveUsdc();
+  const { buyParlayViaAqua, isPending, isConfirming, isSuccess } = useBuyParlayViaAqua();
 
   const disabled = !isConnected || !hasOnChain || markets.length === 0 || stakeUsdc <= 0;
 
@@ -41,23 +50,24 @@ export default function BuyParlayButton({ markets, outcomeIdxs, stakeUsdc, hasOn
     try {
       if (needsApproval) {
         setApproving(true);
-        await approve(PARLAY_ROUTER_ADDRESS, stakeUsdc);
+        await approve(AQUA_PARLAY_ROUTER_ADDRESS, stakeUsdc);
         setApproving(false);
       }
-      await buyParlay(
+      await buyParlayViaAqua(
+        lp,
+        strategyHash,
         markets,
         outcomeIdxs.map(i => BigInt(i)),
         stakeUsdc,
       );
-      // Best-effort Arkiv write — fire-and-forget, don't block UI
       if (address && legsMeta) {
         fetch('/api/ticket', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            ticketId:  0,   // vault emits ticketId in ParlayBought; 0 is a placeholder
+            ticketId:  0,
             owner:     address,
-            stakeUsdc: parseUnits(stakeUsdc.toString(), 6).toString(),
+            stakeUsdc: stakeRaw.toString(),
             payout:    '0',
             legs:      legsMeta,
           }),
@@ -66,19 +76,19 @@ export default function BuyParlayButton({ markets, outcomeIdxs, stakeUsdc, hasOn
       onSuccess?.();
     } catch (e) {
       setApproving(false);
-      console.error('Buy parlay failed:', e);
+      console.error('Buy parlay via Aqua failed:', e);
     }
   }
 
-  let label = 'BUY PARLAY →';
-  if (!isConnected)      label = 'CONNECT WALLET';
-  else if (!hasOnChain)  label = 'ADD ON-CHAIN LEGS';
-  else if (stakeUsdc <= 0) label = 'ENTER STAKE';
+  let label = 'BUY VIA AQUA →';
+  if (!isConnected)             label = 'CONNECT WALLET';
+  else if (!hasOnChain)         label = 'ADD ON-CHAIN LEGS';
+  else if (stakeUsdc <= 0)      label = 'ENTER STAKE';
   else if (approving || isApproving) label = 'APPROVING USDC…';
-  else if (isPending)    label = 'CONFIRM IN WALLET…';
-  else if (isConfirming) label = 'CONFIRMING TX…';
-  else if (isSuccess)    label = '✓ TICKET MINTED!';
-  else if (needsApproval) label = 'APPROVE + BUY →';
+  else if (isPending)           label = 'CONFIRM IN WALLET…';
+  else if (isConfirming)        label = 'CONFIRMING TX…';
+  else if (isSuccess)           label = '✓ TICKET MINTED!';
+  else if (needsApproval)       label = 'APPROVE + BUY VIA AQUA →';
 
   return (
     <button
@@ -88,7 +98,7 @@ export default function BuyParlayButton({ markets, outcomeIdxs, stakeUsdc, hasOn
         flex: 2,
         padding: '14px',
         background: isSuccess ? 'var(--mint)' : disabled ? '#eee' : 'var(--black)',
-        color:      isSuccess ? 'var(--black)' : disabled ? '#aaa'  : 'var(--white)',
+        color:      isSuccess ? 'var(--black)' : disabled ? '#aaa' : 'var(--white)',
         border: 'none',
         cursor: disabled || isPending || isConfirming ? 'not-allowed' : 'pointer',
         fontWeight: 700,
