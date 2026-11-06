@@ -3,10 +3,12 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useParlayStore } from '@/lib/store';
-import { useMarketInfo } from '@/lib/hooks';
+import { useMarketInfo, useRequestSettlement } from '@/lib/hooks';
 import { ProbabilityBar } from '@/components/ui/ProbabilityBar';
 import { Countdown } from '@/components/ui/Countdown';
-import { MARKET_ADDRESSES } from '@/lib/contracts';
+import { TxLink } from '@/components/ui/TxLink';
+import { MARKET_ADDRESSES, MARKET_RESOLVER_ADDRESS } from '@/lib/contracts';
+import { espnIdToMatchId } from '@/lib/espn';
 import type { PolyMarket } from '@/app/api/polymarkets/route';
 
 // ── On-chain LMSR card ────────────────────────────────────────────────────────
@@ -15,6 +17,8 @@ function OnChainCard({ address }: { address: `0x${string}` }) {
   const { addLeg, hasMarket } = useParlayStore();
   const info    = useMarketInfo(address);
   const inParlay = hasMarket(address);
+  const [espnId, setEspnId] = useState('');
+  const { requestSettlement, isPending: settling, txHash: settleTx } = useRequestSettlement();
 
   if (!info?.homeTeam) {
     return (
@@ -53,10 +57,28 @@ function OnChainCard({ address }: { address: `0x${string}` }) {
       </div>
 
       {resolved ? (
-        <div style={{ padding: '10px 16px', borderTop: '1px solid var(--border)', background: 'var(--mint)' }}>
-          <span className="text-label" style={{ fontSize: 10 }}>
-            WINNER: {info.result === 1 ? info.homeTeam : info.result === 2 ? info.awayTeam : 'DRAW'}
-          </span>
+        <div style={{ borderTop: '1px solid var(--border)' }}>
+          <div style={{ padding: '10px 16px', background: 'var(--mint)' }}>
+            <span className="text-label" style={{ fontSize: 10 }}>
+              WINNER: {info.result === 1 ? info.homeTeam : info.result === 2 ? info.awayTeam : 'DRAW'}
+            </span>
+          </div>
+          <div style={{ padding: '10px 16px', borderTop: '1px solid var(--border)', display: 'flex', gap: 8, alignItems: 'center' }}>
+            <input
+              value={espnId}
+              onChange={e => setEspnId(e.target.value)}
+              placeholder="ESPN event ID"
+              style={{ flex: 1, padding: '6px 10px', border: '1px solid var(--border)', fontSize: 11, fontFamily: 'monospace' }}
+            />
+            <button
+              onClick={() => espnId && requestSettlement(espnIdToMatchId(espnId), address)}
+              disabled={!espnId || settling}
+              style={{ padding: '6px 14px', background: 'var(--black)', color: 'var(--white)', border: 'none', cursor: espnId ? 'pointer' : 'default', fontWeight: 700, fontSize: 10, letterSpacing: '0.06em', textTransform: 'uppercase', opacity: espnId ? 1 : 0.4 }}
+            >
+              {settling ? 'SENDING…' : 'REQUEST CRE'}
+            </button>
+            {settleTx && <TxLink hash={settleTx} />}
+          </div>
         </div>
       ) : (
         <div style={{ padding: '12px 16px', borderTop: '1px solid var(--border)', display: 'flex', gap: 8 }}>
