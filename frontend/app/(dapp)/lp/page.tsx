@@ -1,7 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { useAccount } from 'wagmi';
+import { useAccount, useChainId, useSwitchChain } from 'wagmi';
+import { sepolia } from 'wagmi/chains';
 import { useReadContract, useReadContracts } from 'wagmi';
 import { parseUnits, formatUnits } from 'viem';
 import {

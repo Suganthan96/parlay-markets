@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useAccount, useConnect, useReadContract } from 'wagmi';
 import { parseUnits } from 'viem';
 import { useChainId, useSwitchChain } from 'wagmi';
@@ -49,6 +49,7 @@ export default function BuyParlayButton({
   const [approveTx,   setApproveTx]   = useState('');
   const [buyTx,       setBuyTx]       = useState('');
   const [errorMsg,    setErrorMsg]     = useState('');
+  const rpcFixedRef = useRef(false);
 
   const { data: nextTicketIdData } = useReadContract({
     address: PARLAY_VAULT_ADDRESS,
@@ -66,7 +67,7 @@ export default function BuyParlayButton({
 
   const disabled = !isConnected || !hasOnChain || markets.length === 0 || stakeUsdc <= 0;
 
-  async function handleClick() {
+  async function handleClick(isRetry = false) {
     if (disabled) return;
     setErrorMsg('');
     try {
@@ -117,7 +118,31 @@ export default function BuyParlayButton({
         }
         return;
       }
-      const msg = e?.shortMessage ?? e?.message ?? 'Transaction failed';
+      const raw = e?.shortMessage ?? e?.message ?? 'Transaction failed';
+      const isRateLimit = /in-flight|delegated|rate.limit|too many/i.test(raw);
+      if (isRateLimit && !isRetry) {
+        // EIP-7702 delegated account: Alchemy limits in-flight txs for delegated accounts.
+        // Switch wallet to public RPC, then auto-retry once.
+        try {
+          await (window as any).ethereum?.request({
+            method: 'wallet_addEthereumChain',
+            params: [{
+              chainId: '0xaa36a7',
+              chainName: 'Sepolia',
+              nativeCurrency: { name: 'ETH', symbol: 'ETH', decimals: 18 },
+              rpcUrls: ['https://ethereum-sepolia-rpc.publicnode.com'],
+              blockExplorerUrls: ['https://sepolia.etherscan.io'],
+            }],
+          });
+          rpcFixedRef.current = true;
+          // RPC updated — auto-retry the transaction
+          await handleClick(true);
+        } catch {
+          setErrorMsg('RPC throttled. In MetaMask → Settings → Networks → Sepolia → change RPC to: https://ethereum-sepolia-rpc.publicnode.com — then retry.');
+        }
+        return;
+      }
+      const msg = raw;
       setErrorMsg(msg);
       console.error('Buy parlay via Aqua failed:', e);
     }
@@ -138,7 +163,7 @@ export default function BuyParlayButton({
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
       <button
-        onClick={handleClick}
+        onClick={() => handleClick()}
         disabled={disabled || isPending || isConfirming || isApproving || approving}
         style={{
           width: '100%',

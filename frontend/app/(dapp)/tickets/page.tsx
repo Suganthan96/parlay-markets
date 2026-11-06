@@ -4,8 +4,8 @@ import { useState, useEffect } from 'react';
 import { useAccount } from 'wagmi';
 import { useReadContract, useReadContracts, useSimulateContract } from 'wagmi';
 import { formatUnits } from 'viem';
-import { PARLAY_VAULT_ABI, PARLAY_VAULT_ADDRESS, LMSR_MARKET_ABI } from '@/lib/contracts';
-import { useCashOut, useClaim } from '@/lib/hooks';
+import { PARLAY_VAULT_ABI, PARLAY_VAULT_ADDRESS, LMSR_MARKET_ABI, MARKET_RESOLVER_ABI, MARKET_RESOLVER_ADDRESS, MARKET_ADDRESSES } from '@/lib/contracts';
+import { useCashOut, useClaim, useResolveMarket } from '@/lib/hooks';
 import { useParlayStore } from '@/lib/store';
 import { TxLink } from '@/components/ui/TxLink';
 
@@ -95,23 +95,25 @@ function TicketCard({ ticketId }: { ticketId: bigint }) {
 
   useEffect(() => { if (cashOutSuccess) markCashedOut(ticketKey); }, [cashOutSuccess]);
 
-  // Simulate claim to verify the ticket is actually claimable on-chain.
-  // settled=true can mean either cashedOut OR claimed — we can't distinguish
-  // without a new contract getter. Simulation is the safest source of truth.
+  // Always simulate claim — this is the only reliable way to know if all legs resolved+won.
+  // settled=true means cashedOut||claimed (AFTER the fact), so we can't use it to show CLAIM.
   const { data: claimSim, error: claimSimErr } = useSimulateContract({
     address: PARLAY_VAULT_ADDRESS,
     abi: PARLAY_VAULT_ABI,
     functionName: 'claim',
     args: [ticketId],
-    query: { enabled: settled === true && !wasEarlyOut && !claimed },
+    query: { enabled: !wasEarlyOut && !claimed },
   });
 
-  // isWon: vault says settled, payout>0, not cashed-out, AND claim simulation passes
-  const isWon  = settled === true && payout !== undefined && payout > 0n && !wasEarlyOut && !!claimSim && !claimSimErr;
-  // cashedOut/already-claimed: settled but claim sim fails
-  const wasSettledNotWon = settled === true && !wasEarlyOut && !claimed && !!claimSimErr;
-  const isLost = (settled === true && (!payout || payout === 0n) && !wasEarlyOut) || wasSettledNotWon;
-  const isLive = !settled && !wasEarlyOut;
+  const claimErrMsg = (claimSimErr as any)?.shortMessage ?? (claimSimErr as any)?.message ?? '';
+
+  // isWon: claim simulation passes → all legs resolved and all won
+  const isWon  = !!claimSim && !claimSimErr && payout !== undefined && payout > 0n;
+  // isLost: sim fails with "leg lost" or vault says settled but we can't claim (already closed)
+  const isLost = !isWon && !wasEarlyOut && !claimed &&
+    (claimErrMsg.includes('leg lost') || (settled === true && !!claimSimErr));
+  const isLive = !isWon && !isLost && !wasEarlyOut && !claimed;
+  const wasSettledNotWon = settled === true && !wasEarlyOut && !claimed && !isWon;
 
   const statusLabel = wasEarlyOut || wasSettledNotWon ? '↩ SETTLED' : isWon ? '✓ WON' : isLost ? '✕ LOST' : '● LIVE';
   const statusColor = wasEarlyOut || wasSettledNotWon ? '#888' : isWon ? '#16a34a' : isLost ? '#dc2626' : '#00b894';
@@ -223,6 +225,83 @@ function TicketCard({ ticketId }: { ticketId: bigint }) {
           </div>
         </>
       )}
+    </div>
+  );
+}
+
+// ── Owner: Resolve Market panel ───────────────────────────────────────────────
+
+const DEPLOYER = (process.env.NEXT_PUBLIC_DEPLOYER ?? '').toLowerCase();
+
+function MarketCard({ addr, index, isPending, done, onResolve }: {
+  addr: `0x${string}`; index: number; isPending: boolean;
+  done: Record<string, number>; onResolve: (addr: `0x${string}`, result: 1|2|3) => void;
+}) {
+  const { data } = useReadContracts({
+    contracts: [
+      { address: addr, abi: LMSR_MARKET_ABI, functionName: 'homeTeam' },
+      { address: addr, abi: LMSR_MARKET_ABI, functionName: 'awayTeam' },
+    ],
+  });
+  const homeTeam = data?.[0]?.result as string | undefined;
+  const awayTeam = data?.[1]?.result as string | undefined;
+  const label = homeTeam && awayTeam ? `${homeTeam} vs ${awayTeam}` : addr.slice(0, 10) + '…';
+
+  return (
+    <div style={{ background: '#fff', border: '1px solid #fcd34d', padding: '12px 16px', minWidth: 260 }}>
+      <div style={{ fontSize: 10, fontWeight: 700, color: '#78350f', marginBottom: 8 }}>
+        MARKET {index + 1} · {label}
+      </div>
+      <div style={{ fontSize: 9, fontFamily: 'monospace', color: '#aaa', marginBottom: 10 }}>{addr}</div>
+      {done[addr] ? (
+        <div style={{ fontSize: 10, color: '#16a34a', fontWeight: 700 }}>
+          ✓ RESOLVED → {done[addr] === 1 ? 'HOME WIN' : done[addr] === 2 ? 'AWAY WIN' : 'DRAW'}
+        </div>
+      ) : (
+        <div style={{ display: 'flex', gap: 8 }}>
+          {(['HOME WIN', 'AWAY WIN', 'DRAW'] as const).map((lbl, ri) => (
+            <button
+              key={lbl}
+              disabled={isPending}
+              onClick={() => onResolve(addr, (ri + 1) as 1|2|3)}
+              style={{ flex: 1, padding: '8px 4px', fontSize: 9, fontWeight: 800, letterSpacing: '0.05em', background: '#78350f', color: '#fff', border: 'none', cursor: 'pointer', textTransform: 'uppercase' }}
+            >
+              {isPending ? '…' : lbl}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ResolvePanel() {
+  const { address } = useAccount();
+  const { resolveMarket, isPending } = useResolveMarket();
+  const [done, setDone] = useState<Record<string, number>>({});
+
+  if (!address || address.toLowerCase() !== DEPLOYER) return null;
+
+  return (
+    <div style={{ gridColumn: '1 / -1', border: '2px solid #f59e0b', background: '#fffbeb', padding: 20, marginBottom: 8 }}>
+      <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.08em', color: '#92400e', marginBottom: 12 }}>
+        ■ OWNER — RESOLVE MARKETS (CHAINLINK CRE DEMO TRIGGER)
+      </div>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16 }}>
+        {MARKET_ADDRESSES.map((addr, i) => (
+          <MarketCard
+            key={addr}
+            addr={addr as `0x${string}`}
+            index={i}
+            isPending={isPending}
+            done={done}
+            onResolve={(a, r) => resolveMarket(a, r).then(() => setDone(d => ({ ...d, [a]: r })))}
+          />
+        ))}
+      </div>
+      <div style={{ marginTop: 10, fontSize: 9, color: '#92400e' }}>
+        After resolving, winners will see a green CLAIM → button on their tickets within 15s.
+      </div>
     </div>
   );
 }
