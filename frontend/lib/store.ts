@@ -18,20 +18,24 @@ export interface TicketMeta {
 }
 
 interface ParlayStore {
-  legs:          ParlayLeg[];
-  ticketMeta:    Record<string, TicketMeta>;
-  addLeg:        (leg: ParlayLeg) => void;
-  removeLeg:     (marketId: string) => void;
-  clearLegs:     () => void;
-  hasMarket:     (marketId: string) => boolean;
-  saveTicketMeta:(ticketId: string, meta: TicketMeta) => void;
+  legs:              ParlayLeg[];
+  ticketMeta:        Record<string, TicketMeta>;
+  cashedOutTickets:  string[];
+  addLeg:            (leg: ParlayLeg) => void;
+  removeLeg:         (marketId: string) => void;
+  clearLegs:         () => void;
+  hasMarket:         (marketId: string) => boolean;
+  saveTicketMeta:    (ticketId: string, meta: TicketMeta) => void;
+  markCashedOut:     (ticketId: string) => void;
+  isCashedOut:       (ticketId: string) => boolean;
 }
 
 export const useParlayStore = create<ParlayStore>()(
   persist(
     (set, get) => ({
-      legs:       [],
-      ticketMeta: {},
+      legs:             [],
+      ticketMeta:       {},
+      cashedOutTickets: [],
       addLeg: (leg) => {
         const { legs } = get();
         if (legs.length >= 5) return;
@@ -44,6 +48,9 @@ export const useParlayStore = create<ParlayStore>()(
       hasMarket: (marketId) => get().legs.some(l => l.marketId === marketId),
       saveTicketMeta: (ticketId, meta) =>
         set(s => ({ ticketMeta: { ...s.ticketMeta, [ticketId]: meta } })),
+      markCashedOut: (ticketId) =>
+        set(s => ({ cashedOutTickets: [...new Set([...s.cashedOutTickets, ticketId])] })),
+      isCashedOut: (ticketId) => get().cashedOutTickets.includes(ticketId),
     }),
     { name: 'parlay-legs' }
   )

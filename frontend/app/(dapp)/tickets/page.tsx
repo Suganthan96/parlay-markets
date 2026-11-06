@@ -7,6 +7,7 @@ import { formatUnits } from 'viem';
 import { PARLAY_VAULT_ABI, PARLAY_VAULT_ADDRESS, LMSR_MARKET_ABI } from '@/lib/contracts';
 import { useCashOut, useClaim } from '@/lib/hooks';
 import { useParlayStore } from '@/lib/store';
+import { useEffect } from 'react';
 import { TxLink } from '@/components/ui/TxLink';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -125,16 +126,23 @@ function TicketCard({ ticketId }: { ticketId: bigint }) {
   const settled  = data?.[2]?.result as boolean | undefined;
   const legCount = Number(data?.[3]?.result ?? 0);
 
-  const { cashOut, isPending: isCashingOut, isSuccess: cashedOut, txHash: cashOutTx } = useCashOut();
-  const { claim,   isPending: isClaiming,  isSuccess: claimed,   txHash: claimTx    } = useClaim();
+  const { cashOut, isPending: isCashingOut, isSuccess: cashOutSuccess, txHash: cashOutTx } = useCashOut();
+  const { claim,   isPending: isClaiming,  isSuccess: claimed,        txHash: claimTx    } = useClaim();
+  const { markCashedOut, isCashedOut } = useParlayStore();
 
-  const isWon  = settled === true  && payout !== undefined && payout > 0n;
-  const isLost = settled === true  && (!payout || payout === 0n);
-  const isLive = settled === false || settled === undefined;
+  const ticketKey   = ticketId.toString();
+  const wasEarlyOut = isCashedOut(ticketKey) || cashOutSuccess;
 
-  const statusLabel = isWon ? '✓ WON' : isLost ? '✕ LOST' : '● LIVE';
-  const statusColor = isWon ? '#16a34a' : isLost ? '#dc2626' : 'var(--mint)';
-  const headerBg    = isWon ? '#f0fdf4' : isLost ? '#fff1f0' : 'var(--white)';
+  // Persist cashed-out state to store when tx succeeds
+  useEffect(() => { if (cashOutSuccess) markCashedOut(ticketKey); }, [cashOutSuccess]);
+
+  const isWon  = settled === true && payout !== undefined && payout > 0n && !wasEarlyOut;
+  const isLost = settled === true && (!payout || payout === 0n);
+  const isLive = (settled === false || settled === undefined) && !wasEarlyOut;
+
+  const statusLabel = wasEarlyOut ? '↩ CASHED OUT' : isWon ? '✓ WON' : isLost ? '✕ LOST' : '● LIVE';
+  const statusColor = wasEarlyOut ? '#888'          : isWon ? '#16a34a' : isLost ? '#dc2626' : 'var(--mint)';
+  const headerBg    = wasEarlyOut ? '#f8f8f8'       : isWon ? '#f0fdf4' : isLost ? '#fff1f0' : 'var(--white)';
 
   return (
     <div style={{ background: 'var(--white)', border: '1px solid var(--border)', overflow: 'hidden' }}>
@@ -153,7 +161,7 @@ function TicketCard({ ticketId }: { ticketId: bigint }) {
       {/* Legs */}
       <div>
         {Array.from({ length: legCount }, (_, i) => (
-          <LegRow key={i} ticketId={ticketId} legIdx={i} ticketWon={isWon} ticketLost={isLost} />
+          <LegRow key={i} ticketId={ticketId} legIdx={i} ticketWon={isWon} ticketLost={isLost || wasEarlyOut} />
         ))}
         {legCount === 0 && (
           <div style={{ padding: '20px', color: '#bbb', fontSize: 10 }}>LOADING LEGS…</div>
@@ -178,7 +186,7 @@ function TicketCard({ ticketId }: { ticketId: bigint }) {
 
       {/* Action */}
       <div style={{ padding: '16px 20px', borderTop: '1px solid var(--border)', display: 'flex', gap: 12, alignItems: 'center' }}>
-        {isLive && !cashedOut && (
+        {isLive && !wasEarlyOut && (
           <button
             onClick={() => cashOut(ticketId)}
             disabled={isCashingOut}
@@ -187,13 +195,13 @@ function TicketCard({ ticketId }: { ticketId: bigint }) {
             {isCashingOut ? 'CONFIRMING…' : 'CASH OUT EARLY →'}
           </button>
         )}
-        {cashedOut && (
-          <div style={{ flex: 1, display: 'flex', gap: 10, alignItems: 'center' }}>
-            <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--mint)' }}>✓ CASHED OUT</span>
+        {wasEarlyOut && (
+          <div style={{ flex: 1, display: 'flex', gap: 10, alignItems: 'center', padding: '14px', background: '#f8f8f8' }}>
+            <span style={{ fontSize: 11, fontWeight: 700, color: '#888' }}>↩ CASHED OUT EARLY</span>
             {cashOutTx && <TxLink hash={cashOutTx} />}
           </div>
         )}
-        {isWon && !claimed && (
+        {isWon && !claimed && !wasEarlyOut && (
           <button
             onClick={() => claim(ticketId)}
             disabled={isClaiming}
@@ -208,7 +216,7 @@ function TicketCard({ ticketId }: { ticketId: bigint }) {
             {claimTx && <TxLink hash={claimTx} />}
           </div>
         )}
-        {isLost && (
+        {isLost && !wasEarlyOut && (
           <div style={{ flex: 1, padding: '14px', background: '#fff1f0', textAlign: 'center' }}>
             <span className="text-label" style={{ fontSize: 10, color: '#dc2626' }}>✕ PARLAY LOST — BETTER LUCK NEXT TIME</span>
           </div>
