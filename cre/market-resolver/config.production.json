@@ -2,7 +2,7 @@
   "evms": [
     {
       "chainSelectorName": "ethereum-testnet-sepolia",
-      "marketResolverAddress": "0x0000000000000000000000000000000000000000",
+      "marketResolverAddress": "0x5d5cc1cd24943ecf43ad5e88281393418ca06bea",
       "gasLimit": "500000"
     }
   ],
