@@ -67,7 +67,7 @@ export default function ParlayPage() {
               <div style={{ flex: 1 }}>
                 <div style={{ fontWeight: 700, fontSize: 15 }}>{leg.marketLabel}</div>
                 <div className="text-label" style={{ marginTop: 4, color: '#888', fontSize: 10 }}>
-                  {leg.outcome} · {leg.price.toFixed(2)}
+                  {leg.outcome} · {(leg.price * 100).toFixed(0)}% · {(1 / leg.price).toFixed(2)}×
                   {leg.marketAddress && <span style={{ marginLeft: 8, color: 'var(--mint)' }}>■ ON-CHAIN</span>}
                 </div>
               </div>
