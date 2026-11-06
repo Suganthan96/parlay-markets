@@ -104,6 +104,16 @@ export default function ParlayPage() {
             ) : (
               <p style={{ color: '#ccc', fontSize: 20 }}>Add legs to see pricing</p>
             )}
+            {legs.length > 1 && !quoteLoading && displayPrice > 0 && (
+              <p style={{ marginTop: 12, fontSize: 12, color: '#888' }}>
+                Combined odds: <strong style={{ color: 'var(--black)' }}>{(1 / displayPrice).toFixed(2)}×</strong>
+                {stake > 0 && displayPayout > 0 && (
+                  <span style={{ marginLeft: 8, color: '#16a34a', fontWeight: 700 }}>
+                    → ${displayPayout.toFixed(2)} payout
+                  </span>
+                )}
+              </p>
+            )}
           </div>
 
           {/* Stake + slippage inputs */}
