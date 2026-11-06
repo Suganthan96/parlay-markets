@@ -339,12 +339,15 @@ export function useLpShipAqua() {
 export function useLpDockAqua() {
   const { writeContractAsync, isPending, data: txHash } = useWriteContract();
   const { isSuccess } = useWaitForTransactionReceipt({ hash: txHash });
+  // LP calls AQUA.dock() directly (same pattern as ship).
+  // Aqua stores LP's balance under balances[LP][router][strategyHash].
+  // If router called dock, it would look up balances[router][router] → underflow.
   async function lpDockAqua(strategyHash: `0x${string}`) {
     return writeContractAsync({
-      address: AQUA_PARLAY_ROUTER_ADDRESS,
-      abi: AQUA_PARLAY_ROUTER_ABI,
-      functionName: 'lpDockAqua',
-      args: [strategyHash],
+      address: AQUA_ADDRESS,
+      abi: AQUA_ABI,
+      functionName: 'dock',
+      args: [AQUA_PARLAY_ROUTER_ADDRESS, strategyHash, [MOCK_USDC_ADDRESS]],
     });
   }
   return { lpDockAqua, isPending, isSuccess };
