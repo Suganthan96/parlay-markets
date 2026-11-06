@@ -9,8 +9,11 @@ export const MARKET_RESOLVER_ADDRESS = (process.env.NEXT_PUBLIC_MARKET_RESOLVER 
 export const MOCK_USDC_ADDRESS       = (process.env.NEXT_PUBLIC_MOCK_USDC       ?? '0x0000000000000000000000000000000000000000') as `0x${string}`;
 
 // Market addresses — comma-separated in env, e.g. NEXT_PUBLIC_MARKETS=0xABC,0xDEF
-export const MARKET_ADDRESSES: `0x${string}`[] =
-  (process.env.NEXT_PUBLIC_MARKETS ?? '').split(',').filter(Boolean) as `0x${string}`[];
+// Filters out empty strings, whitespace, and zero addresses from the split.
+export const MARKET_ADDRESSES: `0x${string}`[] = (process.env.NEXT_PUBLIC_MARKETS ?? '')
+  .split(',')
+  .map(a => a.trim())
+  .filter(a => a.length > 0 && a !== '0x0000000000000000000000000000000000000000') as `0x${string}`[];
 
 // 1inch Aqua (deployed on Sepolia)
 export const AQUA_ADDRESS        = '0x1111113CCf1426A8E30e2bfF5E005d929bF6a90a' as `0x${string}`;
