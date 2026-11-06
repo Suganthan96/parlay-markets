@@ -10,7 +10,6 @@ const NAV = [
   { label: 'Markets', href: '/' },
   { label: 'Parlay',  href: '/parlay' },
   { label: 'Tickets', href: '/tickets' },
-  { label: 'Slips',   href: '/slips' },
   { label: 'LP',      href: '/lp' },
 ];
 
