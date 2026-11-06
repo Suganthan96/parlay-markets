@@ -80,10 +80,16 @@ function LpShipWizard() {
   const [selectedMkt,   setSelectedMkt]   = useState(MARKET_ADDRESSES[0] ?? '');
   const [aquaShipped,   setAquaShipped]   = useState(false);
   const [shipTxHash,    setShipTxHash]    = useState<`0x${string}` | undefined>();
+  const [addAmount,     setAddAmount]     = useState('');
+  const [addTxHash,     setAddTxHash]     = useState<`0x${string}` | undefined>();
+  const [addSuccess,    setAddSuccess]    = useState(false);
+  const [dockTxHash,    setDockTxHash]    = useState<`0x${string}` | undefined>();
+  const [dockConfirm,   setDockConfirm]   = useState(false);
 
   const { ship,         isPending: isShipping  } = useShipLiquidity(selectedMkt as `0x${string}`);
   const { approveAqua,  isPending: isApproving } = useApproveAqua();
   const { lpShipAqua,   isPending: isShippingAqua, isSuccess: aquaShipSuccess, txHash: aquaTxHash } = useLpShipAqua();
+  const { lpDockAqua,   isPending: isDocking,  isSuccess: dockSuccess } = useLpDockAqua();
   const { requestSettlement } = useRequestSettlement();
 
   const aquaAllowance = useAquaAllowance(address);
@@ -114,6 +120,22 @@ function LpShipWizard() {
     const hash = await lpShipAqua(markets as `0x${string}`[], reserveRaw);
     if (hash) setShipTxHash(hash as `0x${string}`);
     setAquaShipped(true);
+  }
+
+  async function handleAddLiquidity() {
+    const addRaw = parseUnits(addAmount || '0', 6);
+    if (addRaw === 0n) return;
+    const newTotal = aquaAllowance + addRaw;
+    const hash = await approveAqua(newTotal);
+    if (hash) setAddTxHash(hash as `0x${string}`);
+    setAddSuccess(true);
+    setAddAmount('');
+  }
+
+  async function handleDock() {
+    const hash = await lpDockAqua(DEFAULT_STRATEGY_HASH as `0x${string}`);
+    if (hash) setDockTxHash(hash as `0x${string}`);
+    setDockConfirm(false);
   }
 
   return (
@@ -250,6 +272,76 @@ function LpShipWizard() {
                   <span style={{ color: '#888' }}>Ship tx</span>
                   <TxLink hash={(shipTxHash ?? aquaTxHash) as string} />
                 </div>
+              )}
+              {addTxHash && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ color: '#888' }}>Add liquidity tx</span>
+                  <TxLink hash={addTxHash} />
+                </div>
+              )}
+            </div>
+
+            {/* ── Add more liquidity ── */}
+            <div style={{ border: '1px solid var(--border)', padding: '20px' }}>
+              <span className="text-label" style={{ display: 'block', marginBottom: 12, fontSize: 10 }}>■ ADD MORE USDC TO YOUR LP POSITION</span>
+              <p style={{ fontSize: 11, color: '#666', marginBottom: 16, lineHeight: 1.6 }}>
+                Increase Aqua's allowance so more USDC is available for parlay payouts. Your wallet balance is unchanged — Aqua can only pull on winning tickets.
+              </p>
+              <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, border: '1px solid var(--border)', padding: '10px 14px' }}>
+                  <span style={{ fontSize: 10, color: '#888', fontFamily: 'monospace' }}>+</span>
+                  <input
+                    value={addAmount}
+                    onChange={e => { setAddAmount(e.target.value); setAddSuccess(false); }}
+                    placeholder="500"
+                    style={{ border: 'none', outline: 'none', fontSize: 20, fontWeight: 800, width: 100, fontFamily: 'inherit' }}
+                  />
+                  <span style={{ fontSize: 12, color: '#888' }}>USDC</span>
+                </div>
+                {addAmount && (
+                  <span style={{ fontSize: 10, color: '#aaa', fontFamily: 'monospace' }}>
+                    new total: {(Number(formatUnits(aquaAllowance, 6)) + parseFloat(addAmount || '0')).toFixed(2)} USDC
+                  </span>
+                )}
+                <button
+                  onClick={handleAddLiquidity}
+                  disabled={isApproving || !addAmount || parseFloat(addAmount) <= 0}
+                  style={{ padding: '12px 24px', background: 'var(--black)', color: 'var(--white)', border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase', opacity: addAmount && parseFloat(addAmount) > 0 ? 1 : 0.4 }}
+                >
+                  {isApproving ? 'APPROVING…' : 'ADD LIQUIDITY →'}
+                </button>
+                {addSuccess && <span className="text-label" style={{ fontSize: 10, color: 'var(--mint)' }}>✓ ALLOWANCE INCREASED</span>}
+              </div>
+            </div>
+
+            {/* ── Withdraw / Dock ── */}
+            <div style={{ border: '1px solid #f0d0d0', padding: '20px', marginTop: 1 }}>
+              <span className="text-label" style={{ display: 'block', marginBottom: 12, fontSize: 10, color: '#c00' }}>■ WITHDRAW — REMOVE LIQUIDITY FROM AQUA</span>
+              <p style={{ fontSize: 11, color: '#666', marginBottom: 16, lineHeight: 1.6 }}>
+                Calls <code>Aqua.dock()</code> to remove your virtual strategy. Aqua can no longer pull USDC from your wallet. Any pending parlay payouts already in-flight may fail.
+              </p>
+              {dockSuccess || dockTxHash ? (
+                <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+                  <span className="text-label" style={{ fontSize: 10, color: '#c00' }}>✓ LIQUIDITY REMOVED</span>
+                  {dockTxHash && <TxLink hash={dockTxHash} />}
+                </div>
+              ) : dockConfirm ? (
+                <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                  <span style={{ fontSize: 11, fontWeight: 700 }}>Confirm withdraw?</span>
+                  <button onClick={handleDock} disabled={isDocking}
+                    style={{ padding: '10px 20px', background: '#c00', color: '#fff', border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: 11, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+                    {isDocking ? 'DOCKING…' : 'YES, WITHDRAW →'}
+                  </button>
+                  <button onClick={() => setDockConfirm(false)}
+                    style={{ padding: '10px 20px', background: 'transparent', color: '#888', border: '1px solid var(--border)', cursor: 'pointer', fontWeight: 700, fontSize: 11, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+                    CANCEL
+                  </button>
+                </div>
+              ) : (
+                <button onClick={() => setDockConfirm(true)}
+                  style={{ padding: '10px 20px', background: 'transparent', color: '#c00', border: '1px solid #f0d0d0', cursor: 'pointer', fontWeight: 700, fontSize: 11, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+                  WITHDRAW LIQUIDITY
+                </button>
               )}
             </div>
           </>
