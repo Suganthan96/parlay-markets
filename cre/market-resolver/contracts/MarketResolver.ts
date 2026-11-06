@@ -1,87 +1,57 @@
 /**
- * TypeScript binding for MarketResolver.sol — used by the CRE workflow.
- * Mirrors the pattern of the generated SportsMarket.ts from the CRE sports-resolution template.
+ * ABI definitions and helpers for MarketResolver.sol.
+ * Used by the CRE workflow to watch for SettlementRequested events
+ * and encode the resolution report.
  */
 
-import * as cre from "@chainlink/cre-sdk"
+import { type EVMLog, hexToBase64, bytesToHex } from "@chainlink/cre-sdk"
 import {
   encodeAbiParameters,
   parseAbiParameters,
+  keccak256,
+  toBytes,
   type Address,
   type Hex,
 } from "viem"
 
-// ── ABI (subset needed by the workflow) ──────────────────────────────────────
+// ── Event signature hash ──────────────────────────────────────────────────────
 
-const SETTLEMENT_REQUESTED_EVENT = {
-  type: "event",
-  name: "SettlementRequested",
-  inputs: [
-    { name: "matchId", type: "bytes32", indexed: true },
-    { name: "market",  type: "address", indexed: true },
-    { name: "requestedAt", type: "uint256", indexed: false },
-  ],
-} as const
+export const SETTLEMENT_REQUESTED_SIG = keccak256(
+  toBytes("SettlementRequested(bytes32,address,uint256)"),
+) as Hex
 
-const RECEIVE_REPORT_FUNCTION = {
-  type: "function",
-  name: "receiveReport",
-  inputs: [
-    { name: "workflowExecutionId", type: "bytes32" },
-    { name: "workflowName",        type: "bytes32" },
-    { name: "workflowOwner",       type: "bytes32" },
-    { name: "data",                type: "bytes"   },
-  ],
-  outputs: [],
-  stateMutability: "nonpayable",
-} as const
+// ── Decoded event shape ───────────────────────────────────────────────────────
 
 export interface SettlementRequestedEvent {
   matchId: Hex
   market:  Address
-  requestedAt: bigint
 }
 
-export class MarketResolver {
-  private evmClient: cre.capabilities.EVMClient
-  private address:   Address
-
-  constructor(evmClient: cre.capabilities.EVMClient, address: Address) {
-    this.evmClient = evmClient
-    this.address   = address
+/**
+ * Decode a raw EVMLog from the logTrigger into a SettlementRequestedEvent.
+ * topics (each 32 bytes): [eventSig, bytes32 matchId, address market]
+ */
+export function decodeSettlementRequestedLog(log: EVMLog): SettlementRequestedEvent {
+  if (!log.topics || log.topics.length < 3) {
+    throw new Error("SettlementRequested: unexpected log topics length")
   }
-
-  // ── Trigger ───────────────────────────────────────────────────────────────
-
-  logTriggerSettlementRequested(): cre.LogTrigger<SettlementRequestedEvent> {
-    return this.evmClient.createLogTrigger<SettlementRequestedEvent>({
-      contractAddress: this.address,
-      eventAbi: SETTLEMENT_REQUESTED_EVENT,
-    })
-  }
-
-  // ── On-chain write (via CRE Forwarder → receiveReport) ───────────────────
-
-  writeReport(
-    runtime:   cre.Runtime,
-    reportData: Hex,
-    options?:  { gasLimit?: string },
-  ): cre.TxResponse {
-    return this.evmClient.writeContract(runtime, {
-      address:      this.address,
-      abi:          [RECEIVE_REPORT_FUNCTION],
-      functionName: "receiveReport",
-      args:         ["0x", "0x", "0x", reportData],
-      gasLimit:     options?.gasLimit ?? "500000",
-    })
-  }
+  const matchId  = bytesToHex(log.topics[1]) as Hex
+  const topicHex = bytesToHex(log.topics[2])
+  // address is right-aligned in the 32-byte topic — take the last 40 hex chars (20 bytes)
+  const market   = `0x${topicHex.slice(-40)}` as Address
+  return { matchId, market }
 }
 
-// ── Helpers ──────────────────────────────────────────────────────────────────
+// ── Report encoding ──────────────────────────────────────────────────────────
 
-export function encodeResolutionReport(market: Address, outcome: number): Hex {
-  return encodeAbiParameters(
+/**
+ * Encode (market, outcome) for the CRE report body.
+ * Returns a base64 string for ReportRequestJson.encodedPayload.
+ */
+export function encodeResolutionPayload(market: Address, outcome: number): string {
+  const hex = encodeAbiParameters(
     parseAbiParameters("address market, uint8 outcome"),
     [market, outcome],
   )
+  return hexToBase64(hex)
 }
