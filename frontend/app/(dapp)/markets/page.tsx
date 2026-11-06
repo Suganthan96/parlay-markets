@@ -40,20 +40,28 @@ function OnChainCard({ address }: { address: `0x${string}` }) {
         {status === 'resolved' && <span className="text-label" style={{ fontSize: 10 }}>FINAL</span>}
       </div>
 
-      <div style={{ padding: '20px 16px', display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', gap: 8 }}>
-        <div>
-          <div style={{ fontSize: 15, fontWeight: 700 }}>{info.homeTeam}</div>
-          <div style={{ fontSize: 36, fontWeight: 800, letterSpacing: '-0.04em', lineHeight: 1, marginTop: 4 }}>{info.homePrice.toFixed(2)}</div>
+      <div style={{ padding: '16px 16px 0' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+          <div>
+            <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 2 }}>{info.homeTeam}</div>
+            <div style={{ fontSize: 28, fontWeight: 800, letterSpacing: '-0.04em', color: '#16a34a' }}>
+              {(info.homePrice * 100).toFixed(0)}%
+            </div>
+          </div>
+          <span className="text-label" style={{ fontSize: 10, color: '#bbb' }}>VS</span>
+          <div style={{ textAlign: 'right' }}>
+            <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 2 }}>{info.awayTeam}</div>
+            <div style={{ fontSize: 28, fontWeight: 800, letterSpacing: '-0.04em', color: '#888' }}>
+              {(info.awayPrice * 100).toFixed(0)}%
+            </div>
+          </div>
         </div>
-        <span className="text-label" style={{ fontSize: 10, color: '#bbb' }}>VS</span>
-        <div style={{ textAlign: 'right' }}>
-          <div style={{ fontSize: 15, fontWeight: 700 }}>{info.awayTeam}</div>
-          <div style={{ fontSize: 36, fontWeight: 800, letterSpacing: '-0.04em', lineHeight: 1, marginTop: 4 }}>{info.awayPrice.toFixed(2)}</div>
-        </div>
-      </div>
 
-      <div style={{ padding: '0 16px 12px' }}>
-        <ProbabilityBar pct={info.homePrice} />
+        {/* Two-tone bar: home green | draw grey | away light */}
+        <div style={{ height: 6, background: '#eee', borderRadius: 3, overflow: 'hidden', marginBottom: 12, display: 'flex' }}>
+          <div style={{ width: `${info.homePrice * 100}%`, background: '#16a34a', transition: 'width 0.3s' }} />
+          <div style={{ width: `${Math.max(0, (1 - info.homePrice - info.awayPrice)) * 100}%`, background: '#ccc' }} />
+        </div>
       </div>
 
       {resolved ? (
@@ -137,12 +145,27 @@ function PolyCard({ market, idx }: { market: PolyMarket; idx: number }) {
           <img src={market.image} alt="" style={{ width: 36, height: 36, borderRadius: 4, objectFit: 'cover', flexShrink: 0 }} />
         )}
         <div style={{ flex: 1 }}>
-          <p style={{ fontSize: 13, fontWeight: 700, lineHeight: 1.4, margin: '0 0 12px' }}>{market.question}</p>
-          <div style={{ fontSize: 36, fontWeight: 800, letterSpacing: '-0.04em', lineHeight: 1 }}>
-            {market.yesPrice.toFixed(2)}
+          <p style={{ fontSize: 13, fontWeight: 700, lineHeight: 1.4, margin: '0 0 14px' }}>{market.question}</p>
+
+          {/* YES / NO probability row */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
+              <span style={{ fontSize: 28, fontWeight: 800, letterSpacing: '-0.04em', color: '#16a34a' }}>
+                {(market.yesPrice * 100).toFixed(0)}%
+              </span>
+              <span style={{ fontSize: 11, fontWeight: 700, color: '#16a34a' }}>YES</span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
+              <span style={{ fontSize: 28, fontWeight: 800, letterSpacing: '-0.04em', color: '#888' }}>
+                {((1 - market.yesPrice) * 100).toFixed(0)}%
+              </span>
+              <span style={{ fontSize: 11, fontWeight: 700, color: '#888' }}>NO</span>
+            </div>
           </div>
-          <div style={{ marginTop: 10 }}>
-            <ProbabilityBar pct={market.yesPrice} />
+
+          {/* Probability bar */}
+          <div style={{ height: 6, background: '#eee', borderRadius: 3, overflow: 'hidden' }}>
+            <div style={{ height: '100%', width: `${market.yesPrice * 100}%`, background: '#16a34a', borderRadius: 3, transition: 'width 0.3s' }} />
           </div>
         </div>
       </div>
