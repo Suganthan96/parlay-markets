@@ -82,9 +82,9 @@ export default function initWorkflow(
   const settlementTrigger = evmClient.logTrigger({
     addresses: [hexToBase64(marketResolverAddress)],
     topics: [
-      { values: [hexToBase64(SETTLEMENT_REQUESTED_SIG)] },   // topic[0]: event signature
-      {},                                                      // topic[1]: matchId (any)
-      {},                                                      // topic[2]: market address (any)
+      { values: [hexToBase64(SETTLEMENT_REQUESTED_SIG)] },
+      {},
+      {},
     ],
   })
 
@@ -166,8 +166,13 @@ export default function initWorkflow(
 
     // ── Create signed CRE report ─────────────────────────────────────────────
 
-    const encodedPayload = encodeResolutionPayload(market, outcome)
-    const report = runtime.report({ encodedPayload }).result()
+    const reportRequest = {
+      encodedPayload: hexToBase64(encodeResolutionPayload(market, outcome)),
+      encoderName:   "evm",
+      signingAlgo:   "ecdsa",
+      hashingAlgo:   "keccak256",
+    }
+    const report = runtime.report(reportRequest).result()
 
     // ── Write on-chain via CRE Forwarder ─────────────────────────────────────
 

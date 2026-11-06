@@ -4,7 +4,7 @@
  * and encode the resolution report.
  */
 
-import { type EVMLog, hexToBase64, bytesToHex } from "@chainlink/cre-sdk"
+import { type EVMLog, bytesToHex } from "@chainlink/cre-sdk"
 import {
   encodeAbiParameters,
   parseAbiParameters,
@@ -45,13 +45,12 @@ export function decodeSettlementRequestedLog(log: EVMLog): SettlementRequestedEv
 // ── Report encoding ──────────────────────────────────────────────────────────
 
 /**
- * Encode (market, outcome) for the CRE report body.
- * Returns a base64 string for ReportRequestJson.encodedPayload.
+ * ABI-encode (market, outcome) for the CRE report body.
+ * Returns raw hex for use with prepareReportRequest().
  */
-export function encodeResolutionPayload(market: Address, outcome: number): string {
-  const hex = encodeAbiParameters(
+export function encodeResolutionPayload(market: Address, outcome: number): Hex {
+  return encodeAbiParameters(
     parseAbiParameters("address market, uint8 outcome"),
     [market, outcome],
   )
-  return hexToBase64(hex)
 }
