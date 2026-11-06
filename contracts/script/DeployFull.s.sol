@@ -6,7 +6,6 @@ import {MockUSDC}          from "../src/MockUSDC.sol";
 import {MarketResolver}    from "../src/MarketResolver.sol";
 import {LmsrMarket}        from "../src/LmsrMarket.sol";
 import {ParlayVault}       from "../src/ParlayVault.sol";
-import {ParlayRouter}      from "../src/ParlayRouter.sol";
 import {AquaParlayRouter}  from "../src/AquaParlayRouter.sol";
 
 address constant AQUA = 0x1111113CCf1426A8E30e2bfF5E005d929bF6a90a;
@@ -43,22 +42,22 @@ contract DeployFull is Script {
         );
         console.log("LmsrMarket B (Real Madrid vs Barcelona): ", address(marketB));
 
-        // ── 4. ParlayVault + ParlayRouter (nonce prediction) ─────────────────
-        uint256 vaultNonce  = vm.getNonce(deployer);
-        uint256 routerNonce = vaultNonce + 1;
-        address vaultAddr   = vm.computeCreateAddress(deployer, vaultNonce);
-        address routerAddr  = vm.computeCreateAddress(deployer, routerNonce);
+        // ── 4. ParlayVault + AquaParlayRouter (nonce prediction) ─────────────
+        // vault nonce = N, aquaRouter nonce = N+1
+        // vault needs aquaRouter addr upfront; predict via nonce
+        uint256 vaultNonce      = vm.getNonce(deployer);
+        uint256 aquaRouterNonce = vaultNonce + 1;
+        address vaultAddr       = vm.computeCreateAddress(deployer, vaultNonce);
+        address aquaRouterAddr  = vm.computeCreateAddress(deployer, aquaRouterNonce);
 
-        ParlayVault  vault  = new ParlayVault(address(usdc), routerAddr);
+        // Vault authorises AquaParlayRouter (not old ParlayRouter) as the only minter
+        ParlayVault vault = new ParlayVault(address(usdc), aquaRouterAddr);
         require(address(vault) == vaultAddr, "vault addr mismatch");
         console.log("ParlayVault:       ", address(vault));
 
-        ParlayRouter router = new ParlayRouter(address(usdc), address(vault));
-        require(address(router) == routerAddr, "router addr mismatch");
-        console.log("ParlayRouter:      ", address(router));
-
         // ── 5. AquaParlayRouter ───────────────────────────────────────────────
         AquaParlayRouter aquaRouter = new AquaParlayRouter(address(usdc), address(vault));
+        require(address(aquaRouter) == aquaRouterAddr, "aquaRouter addr mismatch");
         console.log("AquaParlayRouter:  ", address(aquaRouter));
 
         // ── 6. Seed LMSR liquidity (500 USDC each, b = 200 WAD) ──────────────
@@ -102,7 +101,6 @@ contract DeployFull is Script {
         console.log("NEXT_PUBLIC_MOCK_USDC=", address(usdc));
         console.log("NEXT_PUBLIC_MARKET_RESOLVER=", address(resolver));
         console.log("NEXT_PUBLIC_PARLAY_VAULT=", address(vault));
-        console.log("NEXT_PUBLIC_PARLAY_ROUTER=", address(router));
         console.log("NEXT_PUBLIC_AQUA_ROUTER=", address(aquaRouter));
         console.log("NEXT_PUBLIC_MARKETS=", address(marketA), ",", address(marketB));
         console.log("NEXT_PUBLIC_STRATEGY_HASH=");
