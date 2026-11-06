@@ -284,7 +284,14 @@ function MarketDetailModal({
             <div style={{ padding: '14px', border: '1px solid #1a1a1a', background: '#060606' }}>
               <p style={{ fontSize: 11, color: '#666', fontWeight: 700, letterSpacing: '0.08em', marginBottom: 10, textTransform: 'uppercase' }}>■ HOW IT SETTLES</p>
               <p style={{ fontSize: 13, color: '#888', lineHeight: 1.65 }}>
-                Chainlink CRE detects the outcome event on-chain, fetches the result from ESPN, reaches consensus across oracle nodes, and pushes it on-chain. Your parlay auto-settles — no admin keys.
+                Chainlink CRE detects the outcome event on-chain, fetches from ESPN, reaches oracle consensus, and settles your ticket automatically — no admin keys.
+              </p>
+            </div>
+            <div style={{ padding: '14px', border: '1px solid #1a1a1a', background: '#060606' }}>
+              <p style={{ fontSize: 11, color: '#666', fontWeight: 700, letterSpacing: '0.08em', marginBottom: 10, textTransform: 'uppercase' }}>■ YES vs NO</p>
+              <p style={{ fontSize: 12, color: '#888', lineHeight: 1.65 }}>
+                <span style={{ color: '#00dc82', fontWeight: 700 }}>YES</span> — you win if the question resolves true.&nbsp;
+                <span style={{ color: '#dc2626', fontWeight: 700 }}>NO</span> — you win if the question resolves false.
               </p>
             </div>
 
