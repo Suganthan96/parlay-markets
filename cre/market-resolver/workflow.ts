@@ -3,38 +3,47 @@
  *
  * Flow:
  *   1. Someone calls MarketResolver.requestSettlement(matchId, market) on Sepolia
- *      → emits SettlementRequested(matchId, market, requestedAt)
- *   2. This workflow detects the event log via logTriggerSettlementRequested()
- *   3. CRE DON fetches the game result from ESPN (or the configured sports API)
- *      using consensus across multiple nodes
+ *      → emits SettlementRequested(bytes32 matchId, address market, uint256 requestedAt)
+ *   2. This workflow detects the event log via logTrigger
+ *   3. CRE DON fetches the game result from ESPN using consensus across multiple nodes
  *   4. Nodes agree on homeScore / awayScore via median aggregation
  *   5. The workflow encodes (market, outcome) and calls MarketResolver.receiveReport()
- *      via the Chainlink Forwarder — only the authorized CRE forwarder address can trigger
+ *      via the Chainlink Forwarder — only the authorized CRE forwarder can call it
  *
  * Simulate:
- *   cre workflow simulate market-resolver --target staging-settings \
- *     --non-interactive --trigger-index 0 \
- *     --evm-tx-hash 0xTX_HASH --evm-event-index 0
+ *   cre workflow simulate market-resolver --target staging-settings --broadcast
+ *   → select the EVM log trigger, then provide a tx hash + event index from Sepolia
  */
 
-import * as cre from "@chainlink/cre-sdk"
-import { type Address } from "viem"
+import {
+  EVMClient,
+  HTTPClient,
+  handler,
+  ConsensusAggregationByFields,
+  median,
+  ignore,
+  TxStatus,
+  type EVMLog,
+  type Runtime,
+  type Workflow,
+  type SecretsProvider,
+} from "@chainlink/cre-sdk"
 
 import {
-  MarketResolver,
-  encodeResolutionReport,
-  type SettlementRequestedEvent,
+  SETTLEMENT_REQUESTED_SIG,
+  decodeSettlementRequestedLog,
+  encodeResolutionPayload,
 } from "./contracts/MarketResolver.js"
 
 // ── Config shape (loaded from config.staging.json) ───────────────────────────
 
 interface EvmConfig {
-  chainSelectorName: string
+  chainSelectorName:     string
   marketResolverAddress: string
-  gasLimit?: string
+  gasLimit?:             string
 }
 
-interface Config {
+export interface Config {
   evms:             EvmConfig[]
   sportsApiBaseUrl: string
   aggregationMode:  "majority" | "median"
@@ -45,120 +54,139 @@ interface Config {
 interface GameResult {
   homeScore: number
   awayScore: number
-  status:    string   // "in", "post", "pre"
+  status:    string   // "in" | "post" | "pre"
 }
 
 // ── Workflow entrypoint ───────────────────────────────────────────────────────
 
 export default function initWorkflow(
-  runtime: cre.Runtime,
-  config:  Config,
-): cre.Handler[] {
+  config:          Config,
+  _secretsProvider?: SecretsProvider,
+): Workflow<Config> {
   const evmConfig = config.evms[0]
   if (!evmConfig) throw new Error("No EVM config found")
 
-  const network = cre.getNetwork({
-    chainFamily:      "evm",
-    chainSelectorName: evmConfig.chainSelectorName,
+  const { marketResolverAddress, gasLimit = "500000" } = evmConfig
+  if (!marketResolverAddress || marketResolverAddress === "0x0000000000000000000000000000000000000000") {
+    throw new Error("marketResolverAddress must be set in config")
+  }
+
+  // Sepolia chain selector
+  const sepoliaSelector = EVMClient.SUPPORTED_CHAIN_SELECTORS["ethereum-testnet-sepolia"]
+  const evmClient  = new EVMClient(sepoliaSelector)
+  const httpClient = new HTTPClient()
+
+  // ── Log trigger: watch for SettlementRequested events ─────────────────────
+
+  const settlementTrigger = evmClient.logTrigger({
+    addresses: [marketResolverAddress],
+    topics: [
+      { values: [SETTLEMENT_REQUESTED_SIG] },   // topic[0]: event signature
+      {},                                         // topic[1]: matchId (any)
+      {},                                         // topic[2]: market address (any)
+    ],
   })
-  if (!network) throw new Error(`Network not found: ${evmConfig.chainSelectorName}`)
 
-  const evmClient = new cre.capabilities.EVMClient(network.chainSelector.selector)
-  const resolver  = new MarketResolver(
-    evmClient,
-    evmConfig.marketResolverAddress as Address,
-  )
-
-  // ── Event handler ─────────────────────────────────────────────────────────
+  // ── Handler ───────────────────────────────────────────────────────────────
 
   async function onSettlementRequested(
-    runtime:  cre.Runtime,
-    event:    SettlementRequestedEvent,
-  ): Promise<void> {
-    const { matchId, market } = event
+    runtime: Runtime<Config>,
+    log:     EVMLog,
+  ): Promise<string> {
+    const { matchId, market } = decodeSettlementRequestedLog(log)
 
-    // matchId was encoded as keccak256(gameId string). We recover the hex string
-    // and use it as the ESPN event ID directly.
+    // matchId was stored as keccak256(uint256(espnEventId)) but we can recover
+    // the numeric ID by treating the bytes32 as a big-endian uint256 string.
     const espnEventId = BigInt(matchId).toString()
 
-    // Fetch game result with DON consensus (multiple nodes → median aggregation).
-    const httpClient = new cre.capabilities.HTTPClient()
+    runtime.log(`SettlementRequested: matchId=${matchId} market=${market} espnEventId=${espnEventId}`)
 
-    const gameResult = httpClient
-      .sendRequest(
-        runtime,
-        fetchGameResult,
-        cre.ConsensusAggregationByFields<GameResult>({
-          homeScore: cre.median,
-          awayScore: cre.median,
-        }),
-      )({ baseUrl: config.sportsApiBaseUrl, eventId: espnEventId })
-      .result()
+    // ── Consensus HTTP fetch ─────────────────────────────────────────────────
 
-    // Determine outcome: 1=Home, 2=Away, 3=Draw
-    let outcome: 1 | 2 | 3
+    const fetchGameResult = (
+      sendRequester: Parameters<Parameters<typeof httpClient.sendRequest>[1]>[0],
+      params: { baseUrl: string; eventId: string },
+    ): GameResult => {
+      const response = sendRequester
+        .sendRequest({
+          url:    `${params.baseUrl}/events/${params.eventId}`,
+          method: "GET",
+        })
+        .result()
+
+      // body is Uint8Array — decode to string first
+      const bodyText   = new TextDecoder().decode(response.body)
+      const body       = JSON.parse(bodyText)
+      const competition = body?.events?.[0]?.competitions?.[0]
+      const competitors = (competition?.competitors ?? []) as Array<{
+        homeAway: string
+        score:    string
+      }>
+      const home   = competitors.find((c) => c.homeAway === "home")
+      const away   = competitors.find((c) => c.homeAway === "away")
+      const status = competition?.status?.type?.state ?? "post"
+
+      return {
+        homeScore: parseInt(home?.score ?? "0", 10),
+        awayScore: parseInt(away?.score ?? "0", 10),
+        status,
+      }
+    }
+
+    const getGameResult = httpClient.sendRequest(
+      runtime,
+      fetchGameResult,
+      ConsensusAggregationByFields<GameResult>({
+        homeScore: median,
+        awayScore: median,
+        status:    ignore,   // string field — ignored in consensus
+      }),
+    )
+
+    const gameResult = getGameResult({
+      baseUrl: config.sportsApiBaseUrl,
+      eventId: espnEventId,
+    }).result()
+
+    // ── Determine outcome ─────────────────────────────────────────────────────
+
+    let outcome: number
     if (gameResult.homeScore > gameResult.awayScore) {
-      outcome = 1
+      outcome = 1   // Home wins
     } else if (gameResult.awayScore > gameResult.homeScore) {
-      outcome = 2
+      outcome = 2   // Away wins
     } else {
-      outcome = 3
+      outcome = 3   // Draw
     }
 
-    console.log(`SettlementRequested matchId=${matchId} market=${market}`)
-    console.log(`Result: homeScore=${gameResult.homeScore} awayScore=${gameResult.awayScore} → outcome=${outcome}`)
+    runtime.log(
+      `Scores: home=${gameResult.homeScore} away=${gameResult.awayScore} → outcome=${outcome}`,
+    )
 
-    // Write the resolution report on-chain via the CRE Forwarder.
-    const reportData = encodeResolutionReport(market, outcome)
-    const resp = resolver.writeReport(runtime, reportData, {
-      gasLimit: evmConfig.gasLimit ?? "500000",
-    })
+    // ── Create signed CRE report ─────────────────────────────────────────────
 
-    if (resp.txStatus !== cre.TxStatus.SUCCESS) {
-      throw new Error(`Resolution TX failed: ${resp.errorMessage ?? resp.txStatus}`)
+    const encodedPayload = encodeResolutionPayload(market, outcome)
+    const report = runtime.report({ encodedPayload }).result()
+
+    // ── Write on-chain via CRE Forwarder ─────────────────────────────────────
+
+    const writeResult = evmClient.writeReport(runtime, {
+      receiver: marketResolverAddress,
+      report,
+      gasConfig: { gasLimit },
+    }).result()
+
+    if (writeResult.txStatus !== TxStatus.SUCCESS) {
+      throw new Error(`Resolution TX failed: txStatus=${writeResult.txStatus}`)
     }
 
-    console.log(`Market ${market} resolved on-chain (tx: ${resp.txHash})`)
+    const txHash = writeResult.txHash
+      ? Buffer.from(writeResult.txHash).toString("hex")
+      : "unknown"
+
+    runtime.log(`Market ${market} resolved on-chain (tx: 0x${txHash})`)
+    return `resolved market=${market} outcome=${outcome} tx=0x${txHash}`
   }
 
-  return [cre.handler(resolver.logTriggerSettlementRequested(), onSettlementRequested)]
-}
-
-// ── ESPN HTTP fetcher (runs inside the DON) ───────────────────────────────────
-
-interface FetchConfig {
-  baseUrl: string
-  eventId: string
-}
-
-function fetchGameResult(
-  sendRequester: cre.HTTPSendRequester,
-  config: FetchConfig,
-): GameResult {
-  const response = sendRequester
-    .sendRequest({
-      url:    `${config.baseUrl}/events/${config.eventId}`,
-      method: "GET",
-    })
-    .result()
-
-  const body = JSON.parse(response.body)
-
-  // ESPN scoreboard response shape:
-  // { events: [{ competitions: [{ competitors: [{ homeAway, score }] }] }] }
-  const competition = body?.events?.[0]?.competitions?.[0]
-  const competitors  = (competition?.competitors ?? []) as Array<{
-    homeAway: string
-    score:    string
-  }>
-  const home = competitors.find((c) => c.homeAway === "home")
-  const away = competitors.find((c) => c.homeAway === "away")
-
-  const status = competition?.status?.type?.state ?? "post"
-
-  return {
-    homeScore: parseInt(home?.score ?? "0", 10),
-    awayScore: parseInt(away?.score ?? "0", 10),
-    status,
-  }
+  return [handler(settlementTrigger, onSettlementRequested)]
 }
