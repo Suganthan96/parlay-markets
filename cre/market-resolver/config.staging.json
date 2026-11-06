@@ -1,0 +1,11 @@
+{
+  "evms": [
+    {
+      "chainSelectorName": "ethereum-testnet-sepolia",
+      "marketResolverAddress": "0x0000000000000000000000000000000000000000",
+      "gasLimit": "500000"
+    }
+  ],
+  "sportsApiBaseUrl": "https://site.api.espn.com/apis/site/v2/sports/soccer/eng.1",
+  "aggregationMode": "majority"
+}
