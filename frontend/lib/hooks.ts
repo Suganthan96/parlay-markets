@@ -231,6 +231,30 @@ export function useClaim() {
 
 // ── MarketResolver ────────────────────────────────────────────────────────────
 
+export function useReadCRE() {
+  const { data: creAddress } = useReadContract({
+    address: MARKET_RESOLVER_ADDRESS,
+    abi: MARKET_RESOLVER_ABI,
+    functionName: 'cre',
+    query: { refetchInterval: 30_000 },
+  });
+  return creAddress as `0x${string}` | undefined;
+}
+
+export function useSetCRE() {
+  const { writeContractAsync, isPending, data: txHash } = useWriteContract();
+  const { isSuccess } = useWaitForTransactionReceipt({ hash: txHash });
+  async function setCRE(newCre: `0x${string}`) {
+    return writeContractAsync({
+      address: MARKET_RESOLVER_ADDRESS,
+      abi: MARKET_RESOLVER_ABI,
+      functionName: 'setCRE',
+      args: [newCre],
+    });
+  }
+  return { setCRE, isPending, isSuccess, txHash };
+}
+
 export function useRequestSettlement() {
   const { writeContractAsync, isPending, data: txHash } = useWriteContract();
   const { isSuccess } = useWaitForTransactionReceipt({ hash: txHash });
