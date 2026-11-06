@@ -15,7 +15,8 @@ function calcFallback(legs: ParlayLeg[]) {
 
 export default function ParlayPage() {
   const { legs, removeLeg, clearLegs } = useParlayStore();
-  const [amount, setAmount] = useState('');
+  const [amount, setAmount]       = useState('');
+  const [slippage, setSlippage]   = useState('5');
   const stake = parseFloat(amount) || 0;
 
   // Build on-chain args from legs that have marketAddress/outcomeIdx
@@ -34,6 +35,8 @@ export default function ParlayPage() {
   const displayPrice   = hasOnChain && combinedPrice > 0 ? combinedPrice : fb.withMargin;
   const displayPayout  = hasOnChain && payoutUsdc   > 0 ? payoutUsdc    : (stake > 0 && fb.withMargin > 0 ? stake / fb.withMargin : 0);
   const priceTip       = hasOnChain ? 'ON-CHAIN LMSR QUOTE' : 'CLIENT-SIDE ESTIMATE';
+  const slippagePct    = Math.max(0, Math.min(50, parseFloat(slippage) || 5));
+  const minPayout      = displayPayout > 0 ? BigInt(Math.floor(displayPayout * (1 - slippagePct / 100) * 1e6)) : 0n;
 
   return (
     <div style={{ maxWidth: 1440, margin: '0 auto', borderLeft: '1px solid var(--border)', borderRight: '1px solid var(--border)' }}>
@@ -103,7 +106,7 @@ export default function ParlayPage() {
             )}
           </div>
 
-          {/* Stake input */}
+          {/* Stake + slippage inputs */}
           <div style={{ padding: '24px', borderBottom: '1px solid var(--border)' }}>
             <span className="text-label" style={{ display: 'block', marginBottom: 10, fontSize: 10 }}>■ STAKE (USDC)</span>
             <input
@@ -111,6 +114,19 @@ export default function ParlayPage() {
               onChange={e => setAmount(e.target.value)}
               style={{ background: 'transparent', border: 'none', borderBottom: '2px solid var(--black)', fontSize: 'clamp(32px,5vw,56px)', fontWeight: 800, letterSpacing: '-0.03em', outline: 'none', width: '100%', padding: '6px 0' }}
             />
+            <div style={{ marginTop: 16, display: 'flex', alignItems: 'center', gap: 10 }}>
+              <span className="text-label" style={{ fontSize: 10, color: '#888' }}>■ SLIPPAGE TOLERANCE</span>
+              <div style={{ display: 'flex', gap: 4 }}>
+                {['1', '3', '5'].map(v => (
+                  <button key={v} onClick={() => setSlippage(v)}
+                    style={{ padding: '3px 10px', fontSize: 10, fontWeight: 700, border: '1px solid var(--border)', cursor: 'pointer', background: slippage === v ? 'var(--black)' : 'transparent', color: slippage === v ? 'var(--white)' : 'var(--black)' }}>
+                    {v}%
+                  </button>
+                ))}
+                <input type="number" min="0" max="50" value={slippage} onChange={e => setSlippage(e.target.value)}
+                  style={{ width: 48, padding: '3px 6px', fontSize: 10, border: '1px solid var(--border)', textAlign: 'right' }} />
+              </div>
+            </div>
           </div>
 
           {/* Pay / Win summary row */}
