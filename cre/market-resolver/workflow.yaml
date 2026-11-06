@@ -6,6 +6,14 @@ staging-settings:
     config-path:   "./config.staging.json"
     secrets-path:  ""
 
+nba-settings:
+  user-workflow:
+    workflow-name: "parlay-market-resolver-nba"
+  workflow-artifacts:
+    workflow-path: "./main.ts"
+    config-path:   "./config.nba.json"
+    secrets-path:  ""
+
 production-settings:
   user-workflow:
     workflow-name: "parlay-market-resolver-production"
