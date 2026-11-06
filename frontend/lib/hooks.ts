@@ -203,11 +203,11 @@ export function useTicket(ticketId: bigint | undefined) {
   const [owner, stake, payout, settled, legCount] = data;
   return {
     ticketId,
-    owner:    owner.result    as `0x${string}` | undefined,
-    stake:    stake.result    as bigint        | undefined,
-    payout:   payout.result   as bigint        | undefined,
-    settled:  settled.result  as boolean       | undefined,
-    legCount: legCount.result as number        | undefined,
+    owner:    owner?.result    as `0x${string}` | undefined,
+    stake:    stake?.result    as bigint        | undefined,
+    payout:   payout?.result   as bigint        | undefined,
+    settled:  settled?.result  as boolean       | undefined,
+    legCount: legCount?.result as number        | undefined,
   };
 }
 

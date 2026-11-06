@@ -77,7 +77,7 @@ function LpShipWizard() {
   const [lmsrAmount,    setLmsrAmount]    = useState('5');
   const [bValue,        setBValue]        = useState('100');
   const [reserveAmount, setReserveAmount] = useState('500');
-  const [selectedMkt,   setSelectedMkt]   = useState(MARKET_ADDRESSES[0] ?? '');
+  const [selectedMkt,   setSelectedMkt]   = useState<`0x${string}`>(MARKET_ADDRESSES[0] ?? '0x');
   const [aquaShipped,   setAquaShipped]   = useState(false);
   const [shipTxHash,    setShipTxHash]    = useState<`0x${string}` | undefined>();
   const [addAmount,     setAddAmount]     = useState('');
@@ -99,9 +99,9 @@ function LpShipWizard() {
   const hasAllowance = aquaAllowance > 0n;
   const isLpActive   = hasAllowance || aquaShipped || aquaShipSuccess;
 
-  // Derive step from real chain state
-  const step     = isLpActive ? 4 : hasAllowance ? 3 : 2;
   const lmsrDone = true; // markets already seeded from deploy
+  // Derive step from real chain state (1 = seed LMSR, 2 = approve, 3 = ship, 4 = active)
+  const step: 1 | 2 | 3 | 4 = isLpActive ? 4 : hasAllowance ? 3 : lmsrDone ? 2 : 1;
   const aquaApproved = hasAllowance;
 
   async function handleLmsrShip() {
@@ -165,7 +165,7 @@ function LpShipWizard() {
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 20 }}>
               <div>
                 <label className="text-label" style={{ display: 'block', marginBottom: 6, fontSize: 9 }}>■ MARKET</label>
-                <select value={selectedMkt} onChange={e => setSelectedMkt(e.target.value)}
+                <select value={selectedMkt} onChange={e => setSelectedMkt(e.target.value as `0x${string}`)}
                   style={{ border: '1px solid var(--border)', padding: '8px', fontSize: 11, width: '100%', fontFamily: 'inherit' }}>
                   {MARKET_ADDRESSES.map(a => <option key={a} value={a}>{a.slice(0,10)}…</option>)}
                 </select>

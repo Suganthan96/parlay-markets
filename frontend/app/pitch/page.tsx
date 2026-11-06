@@ -12,8 +12,8 @@ function Slide1() {
           <span className="text-label" style={{ color: '#444' }}>■ ETHGlobal 2026 · Hackathon Submission</span>
         </div>
         <div className="gc-3-4" style={{ background: 'var(--black)', padding: '14px 24px', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 8 }}>
-          {[]) => (
-            <span key={n as string} className="text-label" style={{ padding: '4px 10px', border: `1px solid ${c}`, color: c as string }}>{n}</span>
+          {['1inch Aqua', 'Chainlink CRE'].map(n => (
+            <span key={n} className="text-label" style={{ padding: '4px 10px', border: '1px solid #333', color: '#555' }}>{n}</span>
           ))}
         </div>
       </div>
@@ -420,8 +420,8 @@ function Slide6() {
               {['Next.js 14','wagmi v2','viem','Solidity','Foundry'].map(t => (
                 <span key={t} className="text-label" style={{ padding: '3px 8px', border: '1px solid #333', color: '#666' }}>{t}</span>
               ))}
-              {[]) => (
-                <span key={t} className="text-label" style={{ padding: '3px 8px', border: `1px solid ${c}44`, color: c as string }}>{t}</span>
+              {[['1inch Aqua','#1dc3fa'],['Chainlink CRE','#375bd2']].map(([t,c]) => (
+                <span key={t} className="text-label" style={{ padding: '3px 8px', border: `1px solid ${c}44`, color: c }}>{t}</span>
               ))}
             </div>
           </div>
