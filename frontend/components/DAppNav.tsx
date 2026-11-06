@@ -8,6 +8,7 @@ import { injected } from 'wagmi/connectors';
 import { sepolia } from 'wagmi/chains';
 import AspenLogo from './AspenLogo';
 import { useUsdcBalance } from '@/lib/hooks';
+import { useParlayStore } from '@/lib/store';
 
 const NAV = [
   { label: 'Markets', href: '/markets' },
@@ -79,7 +80,8 @@ function WalletButton() {
 }
 
 export function DAppNav() {
-  const path = usePathname();
+  const path    = usePathname();
+  const legCount = useParlayStore(s => s.legs.length);
 
   return (
     <header className="sticky top-0 z-50 bg-white" style={{ borderBottom: '1px solid var(--border)' }}>
@@ -125,6 +127,11 @@ export function DAppNav() {
                 }}
               >
                 {n.label}
+                {n.href === '/parlay' && legCount > 0 && (
+                  <span style={{ marginLeft: 6, background: 'var(--mint)', color: 'var(--black)', fontSize: 9, fontWeight: 800, padding: '1px 5px', borderRadius: 2 }}>
+                    {legCount}
+                  </span>
+                )}
               </Link>
             );
           })}
