@@ -401,6 +401,14 @@ export default function MarketsPage() {
 
   const filtered = filter === 'all' ? polymarkets : polymarkets.filter(m => inferCategory(m.question) === filter);
 
+  const categoryCounts: Record<Filter, number> = {
+    all: polymarkets.length,
+    politics: polymarkets.filter(m => inferCategory(m.question) === 'politics').length,
+    crypto:   polymarkets.filter(m => inferCategory(m.question) === 'crypto').length,
+    sports:   polymarkets.filter(m => inferCategory(m.question) === 'sports').length,
+    world:    polymarkets.filter(m => inferCategory(m.question) === 'world').length,
+  };
+
   return (
     <div style={{ maxWidth: 1440, margin: '0 auto', borderLeft: '1px solid var(--border)', borderRight: '1px solid var(--border)' }}>
       {selected && (
@@ -450,6 +458,9 @@ export default function MarketsPage() {
           {(['all', 'politics', 'crypto', 'sports', 'world'] as Filter[]).map(f => (
             <button key={f} onClick={() => setFilter(f)} style={{ padding: '3px 10px', fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', cursor: 'pointer', border: '1px solid var(--border)', background: filter === f ? 'var(--black)' : 'transparent', color: filter === f ? 'var(--white)' : 'var(--black)' }}>
               {f}
+              {!loading && categoryCounts[f] > 0 && (
+                <span style={{ marginLeft: 5, fontSize: 9, opacity: 0.6, fontWeight: 600 }}>({categoryCounts[f]})</span>
+              )}
             </button>
           ))}
           {!loading && <span style={{ marginLeft: 'auto', fontSize: 11, color: '#888' }}>{filtered.length} markets</span>}
