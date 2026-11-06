@@ -10,6 +10,7 @@ export interface PolyMarket {
   liquidity:   number;
   volume24hr:  number;
   slug:        string;
+  clobTokenId: string; // YES outcome token ID for price history
 }
 
 export async function GET() {
@@ -32,16 +33,23 @@ export async function GET() {
       )
       .map(m => {
         const prices = JSON.parse(m.outcomePrices);
+        // clobTokenIds is a JSON string like '["tokenA","tokenB"]'; index 0 = YES token
+        let clobTokenId = '';
+        try {
+          const ids = JSON.parse(m.clobTokenIds ?? '[]');
+          clobTokenId = ids[0] ?? '';
+        } catch {}
         return {
-          id:         m.id,
-          question:   m.question,
-          image:      m.image ?? '',
-          endDate:    m.endDate,
-          yesPrice:   parseFloat(prices[0]),
-          noPrice:    parseFloat(prices[1]),
-          liquidity:  m.liquidityNum ?? m.liquidity,
-          volume24hr: m.volume24hr ?? 0,
-          slug:       m.slug,
+          id:          m.id,
+          question:    m.question,
+          image:       m.image ?? '',
+          endDate:     m.endDate,
+          yesPrice:    parseFloat(prices[0]),
+          noPrice:     parseFloat(prices[1]),
+          liquidity:   m.liquidityNum ?? m.liquidity,
+          volume24hr:  m.volume24hr ?? 0,
+          slug:        m.slug,
+          clobTokenId,
         };
       })
       .sort((a, b) => b.volume24hr - a.volume24hr)
