@@ -17,6 +17,7 @@ import {
 import { CRE_FORWARDER_ADDRESS } from '@/lib/contracts';
 import { TxLink, AddrLink } from '@/components/ui/TxLink';
 import { MOCK_USDC_ADDRESS } from '@/lib/contracts';
+import CreMonitorPanel from '@/components/CreMonitorPanel';
 
 // ── Step indicator ────────────────────────────────────────────────────────────
 
@@ -399,9 +400,10 @@ export default function LpPage() {
   const { address, isConnected } = useAccount();
   const { formatted: usdcBal } = useUsdcBalance(address);
   const { data: nextId } = useReadContract({
+    chainId: 11155111,
     address: PARLAY_VAULT_ADDRESS, abi: PARLAY_VAULT_ABI, functionName: 'nextTicketId',
   });
-  const totalTickets = Number(nextId ?? 0);
+  const totalTickets = Math.max(Number(nextId ?? 1n) - 1, 0);
 
   return (
     <div style={{ maxWidth: 1440, margin: '0 auto', borderLeft: '1px solid var(--border)', borderRight: '1px solid var(--border)' }}>
@@ -453,6 +455,8 @@ export default function LpPage() {
         </div>
         <LpShipWizard />
       </div>
+
+      <CreMonitorPanel />
 
       {/* CRE Forwarder admin panel */}
       <div style={{ background: 'var(--white)', borderBottom: '1px solid var(--border)' }}>
