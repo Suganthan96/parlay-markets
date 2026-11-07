@@ -257,5 +257,3 @@ cre/          Chainlink CRE workflow, monitor and simulation script
 frontend/     Next.js 15 + wagmi/viem app
 video/        Remotion showreel and video assembly scripts
 ```
-
-`parlay markets.md` is the original design spec. It is **historical**: the shipped design is simpler (the router calls `Aqua.pull` directly, and `LmsrMarket` is a standalone contract).
