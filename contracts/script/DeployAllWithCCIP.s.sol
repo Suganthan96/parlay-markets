@@ -2,7 +2,6 @@
 pragma solidity ^0.8.25;
 
 import {Script, console} from "forge-std/Script.sol";
-import {MockUSDC}           from "../src/MockUSDC.sol";
 import {MarketResolver}     from "../src/MarketResolver.sol";
 import {LmsrMarket}         from "../src/LmsrMarket.sol";
 import {ParlayVault}        from "../src/ParlayVault.sol";
@@ -13,12 +12,17 @@ import {IERC20}             from "@openzeppelin/contracts/token/ERC20/IERC20.sol
 
 address constant AQUA               = 0x1111113CCf1426A8E30e2bfF5E005d929bF6a90a;
 address constant CCIP_ROUTER_SEPOLIA = 0x0BF3dE8c5D3e8A2B34D2BEeB17ABfCeBaf363A59;
+/// @dev Circle USDC on Ethereum Sepolia — the CCIP-supported destination of Base Sepolia USDC
+address constant SEPOLIA_USDC        = 0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238;
 
 /// @notice Full deployment on Ethereum Sepolia:
-///   MockUSDC + LmsrMarkets + ParlayVault + AquaParlayRouter + CCIPParlayReceiver
+///   LmsrMarkets (real Circle USDC) + ParlayVault + AquaParlayRouter + CCIPParlayReceiver
 ///
 /// Env vars:
-///   PRIVATE_KEY — deployer key
+///   PRIVATE_KEY   — deployer key; must hold Sepolia USDC (https://faucet.circle.com)
+///                   covering LMSR_SEED*2 + AQUA_RESERVE_APPROVAL
+///   LMSR_SEED     — optional, USDC (6 dec) shipped to each LMSR market (default 2e6)
+///   AQUA_RESERVE  — optional, USDC (6 dec) shipped to Aqua (default 10e6)
 contract DeployAllWithCCIP is Script {
 
     function run() external {
@@ -27,9 +31,9 @@ contract DeployAllWithCCIP is Script {
 
         vm.startBroadcast(deployerKey);
 
-        // ── 1. MockUSDC ───────────────────────────────────────────────
-        MockUSDC usdc = new MockUSDC();
-        console.log("MockUSDC:          ", address(usdc));
+        // ── 1. Real USDC (no mock: bridged stakes from Base Sepolia are Circle USDC)
+        IERC20 usdc = IERC20(SEPOLIA_USDC);
+        console.log("USDC (Circle, Sepolia):", address(usdc));
 
         // ── 2. MarketResolver ─────────────────────────────────────────
         MarketResolver resolver = new MarketResolver(deployer);
@@ -78,28 +82,21 @@ contract DeployAllWithCCIP is Script {
         vault.setCcipReceiver(address(receiver));
         console.log("ParlayVault.ccipReceiver set");
 
-        // ── 6. Seed LMSR liquidity (500 USDC each, b=200) ────────────
-        uint256 lmsrSeed = 500e6;
+        // ── 6. Seed LMSR liquidity (real USDC from the deployer) ─────
+        uint256 lmsrSeed = vm.envOr("LMSR_SEED", uint256(2e6));
         int256  b        = 200e18;
 
-        usdc.mint(deployer, lmsrSeed * 2);
         usdc.approve(address(marketA), lmsrSeed);
         marketA.ship(lmsrSeed, b);
 
         usdc.approve(address(marketB), lmsrSeed);
         marketB.ship(lmsrSeed, b);
-        console.log("LMSR seeded: 500 USDC each, b=200");
+        console.log("LMSR seeded, b=200");
 
-        // ── 7. Fund receiver USDC reserve (100 USDC for CCIP payouts) ─
-        uint256 ccipReserve = 100e6;
-        usdc.mint(deployer, ccipReserve);
-        usdc.approve(address(receiver), ccipReserve);
-        receiver.fundReserve(ccipReserve);
-        console.log("CCIPParlayReceiver funded with 100 USDC reserve");
+        // ── 7. CCIP receiver needs no reserve: stakes arrive with each message
 
-        // ── 8. Aqua payout reserve (2000 USDC) ───────────────────────
-        uint256 aquaReserve = 2000e6;
-        usdc.mint(deployer, aquaReserve);
+        // ── 8. Aqua payout reserve ───────────────────────
+        uint256 aquaReserve = vm.envOr("AQUA_RESERVE", uint256(10e6));
         usdc.approve(AQUA, aquaReserve);
 
         address[] memory markets      = new address[](2);
@@ -116,15 +113,11 @@ contract DeployAllWithCCIP is Script {
         console.log("Shipped to Aqua. strategyHash:");
         console.logBytes32(strategyHash);
 
-        // ── 9. Test USDC for deployer ─────────────────────────────────
-        usdc.mint(deployer, 100e6);
-        console.log("Minted 100 USDC to deployer for testing");
-
         vm.stopBroadcast();
 
         console.log("");
         console.log("=== DEPLOYMENT COMPLETE - copy to .env.local ===");
-        console.log("NEXT_PUBLIC_MOCK_USDC=", address(usdc));
+        console.log("NEXT_PUBLIC_MOCK_USDC= (real Sepolia USDC) ", address(usdc));
         console.log("NEXT_PUBLIC_MARKET_RESOLVER=", address(resolver));
         console.log("NEXT_PUBLIC_PARLAY_VAULT=", address(vault));
         console.log("NEXT_PUBLIC_AQUA_ROUTER=", address(aquaRouter));

@@ -48,10 +48,10 @@ GATEWAY_OUTPUT=$(PRIVATE_KEY="$PRIVATE_KEY" SEPOLIA_RECEIVER_ADDRESS="$RECEIVER_
 echo "$GATEWAY_OUTPUT"
 
 GATEWAY_ADDR=$(echo "$GATEWAY_OUTPUT" | grep "CCIPParlayGateway:" | awk '{print $NF}')
-BASE_USDC_ADDR=$(echo "$GATEWAY_OUTPUT" | grep "MockUSDC (Base Sepolia):" | awk '{print $NF}')
+BASE_USDC_ADDR=0x036CbD53842c5426634e7929541eC2318f3dCF7e
 echo ""
 echo "✓ CCIPParlayGateway deployed at: $GATEWAY_ADDR"
-echo "✓ MockUSDC (Base Sepolia) at:    $BASE_USDC_ADDR"
+echo "✓ Circle USDC (Base Sepolia):   $BASE_USDC_ADDR"
 
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
@@ -71,7 +71,7 @@ echo " DEPLOYMENT COMPLETE"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo "CCIPParlayReceiver (Sepolia):       $RECEIVER_ADDR"
 echo "CCIPParlayGateway (Base Sepolia):   $GATEWAY_ADDR"
-echo "MockUSDC (Base Sepolia):            $BASE_USDC_ADDR"
+echo "Circle USDC (Base Sepolia):         $BASE_USDC_ADDR"
 echo ""
 echo "Add to frontend/.env.local:"
 echo "NEXT_PUBLIC_CCIP_RECEIVER=$RECEIVER_ADDR"
