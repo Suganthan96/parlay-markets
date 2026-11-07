@@ -44,7 +44,21 @@ interface EvmConfig {
   gasLimit?:             string
 }
 
+/**
+ * Non-sports market source (crypto/finance/politics/any JSON API). Keyed in Config.sources by the market's
+ * matchId (lowercase bytes32 hex). Outcome 1 ("Yes"/home) if `value op threshold` holds, else 2 ("No"/away).
+ * Nodes fetch independently and reach consensus on the median of the numeric value found at `path`.
+ */
+interface ValueSource {
+  question:  string
+  url:       string
+  path:      string                       // dot path into the JSON, e.g. "data.amount"
+  op:        "gt" | "gte" | "lt" | "lte"
+  threshold: number
+}
+
 export interface Config {
+  sources?:         Record<string, ValueSource>
   evms:             EvmConfig[]
   sportsApiBaseUrl: string
   aggregationMode:  "majority" | "median"
@@ -102,6 +116,7 @@ export default function initWorkflow(
 
     runtime.log(`SettlementRequested: matchId=${matchId} market=${market} espnEventId=${espnEventId}`)
 
+    const resolveEspn = (): number => {
     // ── Consensus HTTP fetch ─────────────────────────────────────────────────
 
     const fetchGameResult = (
@@ -110,7 +125,7 @@ export default function initWorkflow(
     ): GameResult => {
       const response = sendRequester
         .sendRequest({
-          url:    `${params.baseUrl}/events/${params.eventId}`,
+          url:    `${params.baseUrl}/summary?event=${params.eventId}`,
           method: "GET",
         })
         .result()
@@ -118,18 +133,25 @@ export default function initWorkflow(
       // body is Uint8Array — decode to string first
       const bodyText   = new TextDecoder().decode(response.body)
       const body       = JSON.parse(bodyText)
-      const competition = body?.events?.[0]?.competitions?.[0]
+      const competition = body?.header?.competitions?.[0]
       const competitors = (competition?.competitors ?? []) as Array<{
         homeAway: string
         score:    string
       }>
       const home   = competitors.find((c) => c.homeAway === "home")
       const away   = competitors.find((c) => c.homeAway === "away")
-      const status = competition?.status?.type?.state ?? "post"
+      const status = competition?.status?.type?.state as string | undefined
+
+      if (!home || !away) {
+        throw new Error(`ESPN event ${params.eventId}: competitors not found`)
+      }
+      if (status !== "post") {
+        throw new Error(`ESPN event ${params.eventId} not finished (state=${status})`)
+      }
 
       return {
-        homeScore: parseInt(home?.score ?? "0", 10),
-        awayScore: parseInt(away?.score ?? "0", 10),
+        homeScore: parseInt(home.score, 10),
+        awayScore: parseInt(away.score, 10),
         status,
       }
     }
@@ -163,6 +185,30 @@ export default function initWorkflow(
     runtime.log(
       `Scores: home=${gameResult.homeScore} away=${gameResult.awayScore} → outcome=${outcome}`,
     )
+    return outcome
+    }
+
+    const resolveValue = (src: ValueSource): number => {
+      const fetchValue = (
+        sendRequester: Parameters<Parameters<typeof httpClient.sendRequest>[1]>[0],
+        params: { url: string; path: string },
+      ): { value: number } => {
+        const response = sendRequester.sendRequest({ url: params.url, method: "GET" }).result()
+        let node: unknown = JSON.parse(new TextDecoder().decode(response.body))
+        for (const key of params.path.split(".")) node = (node as Record<string, unknown> | undefined)?.[key]
+        const value = Number(node)
+        if (!Number.isFinite(value)) throw new Error(`no numeric value at "${params.path}" in ${params.url}`)
+        return { value }
+      }
+      const get = httpClient.sendRequest(runtime, fetchValue, ConsensusAggregationByFields<{ value: number }>({ value: median }))
+      const { value } = get({ url: src.url, path: src.path }).result()
+      const holds = { gt: value > src.threshold, gte: value >= src.threshold, lt: value < src.threshold, lte: value <= src.threshold }[src.op]
+      runtime.log(`"${src.question}": value=${value} ${src.op} ${src.threshold} → ${holds}`)
+      return holds ? 1 : 2
+    }
+
+    const source  = config.sources?.[matchId.toLowerCase()]
+    const outcome = source ? resolveValue(source) : resolveEspn()
 
     // ── Create signed CRE report ─────────────────────────────────────────────
 

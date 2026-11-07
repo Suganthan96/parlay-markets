@@ -3,3 +3,6 @@ node_modules/
 */node_modules/
 # CRE build cache
 */.cre_build_tmp.js
+monitor.log.jsonl
+monitor.lock
+monitor.markets.json

@@ -2,10 +2,19 @@
   "evms": [
     {
       "chainSelectorName": "ethereum-testnet-sepolia",
-      "marketResolverAddress": "0x4EE1a60fC2A4663342e883EBeF40A185B3b268eE",
+      "marketResolverAddress": "0x79AcDa877B38570d4A2e7Ee84dC5AA60E6AeE934",
       "gasLimit": "500000"
     }
   ],
   "sportsApiBaseUrl": "https://site.api.espn.com/apis/site/v2/sports/soccer/eng.1",
-  "aggregationMode": "majority"
+  "aggregationMode": "majority",
+  "sources": {
+    "0xcc8b89d43965238d858284dcc391bbad6e1c5a1148e412dde06a23ad298cba5e": {
+      "question": "Will BTC be above $75,000?",
+      "url": "https://api.coinbase.com/v2/prices/BTC-USD/spot",
+      "path": "data.amount",
+      "op": "gt",
+      "threshold": 75000
+    }
+  }
 }
