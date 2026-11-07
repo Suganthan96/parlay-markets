@@ -10,7 +10,10 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 ///         the request is relayed via Chainlink CCIP to CCIPParlayReceiver on
 ///         Ethereum Sepolia where the ParlayVault mints the ticket.
 ///
-///         CCIP v2 — data-only message, fee paid in native ETH.
+///         CCIP programmable token transfer: real Circle USDC is bridged
+///         (Base Sepolia USDC → Sepolia USDC) together with the parlay data,
+///         so the transfer is visible as a token transfer in CCIP Explorer.
+///         Fee is paid in native ETH.
 ///         Chain selectors (v2 testnet):
 ///           Ethereum Sepolia  : 16015286601757825753
 ///           Base Sepolia      : 10344971235874465080
@@ -24,8 +27,11 @@ contract CCIPParlayGateway {
     // ── Receiver on Ethereum Sepolia ─────────────────────────────────
     address public immutable sepoliaReceiver;
 
-    // ── Parlay escrow (USDC on Base Sepolia) ─────────────────────────
+    // ── Circle USDC on Base Sepolia (0x036CbD53842c5426634e7929541eC2318f3dCF7e)
     IERC20 public immutable usdc;
+
+    /// @dev Gas for receiver's _ccipReceive (price reads + vault mint)
+    uint256 public constant RECEIVER_GAS_LIMIT = 500_000;
 
     // ── Cross-chain message payload ───────────────────────────────────
     struct CrossChainParlay {
@@ -48,7 +54,7 @@ contract CCIPParlayGateway {
     /// @param _ccipRouter   CCIP Router on Base Sepolia
     ///                      0xD3b06cEbF099CE7DA4AcCf578aaebFDBd6e88a93
     /// @param _sepoliaReceiver  CCIPParlayReceiver address on Ethereum Sepolia
-    /// @param _usdc         USDC token on Base Sepolia
+    /// @param _usdc         Circle USDC on Base Sepolia (CCIP-supported token)
     constructor(address _ccipRouter, address _sepoliaReceiver, address _usdc) {
         ccipRouter      = IRouterClient(_ccipRouter);
         sepoliaReceiver = _sepoliaReceiver;
@@ -57,8 +63,9 @@ contract CCIPParlayGateway {
 
     // ── Send cross-chain parlay ──────────────────────────────────────
 
-    /// @notice User calls this on Base Sepolia. Locks USDC here and sends
-    ///         a CCIP message to Ethereum Sepolia to mint the ticket.
+    /// @notice User calls this on Base Sepolia. Bridges the USDC stake to the
+    ///         receiver on Ethereum Sepolia via CCIP, together with the parlay
+    ///         data, so the ticket is minted against real USDC.
     /// @param markets   On-chain LMSR market addresses (Sepolia)
     /// @param outcomes  Outcome index per leg (0 or 1)
     /// @param stakeUsdc USDC amount (6 decimals) — must be approved to this contract
@@ -73,37 +80,22 @@ contract CCIPParlayGateway {
         require(markets.length == outcomes.length, "Gateway: leg arrays mismatch");
         require(stakeUsdc > 0, "Gateway: zero stake");
 
-        // Lock USDC from buyer on Base Sepolia as proof of intent
-        usdc.transferFrom(msg.sender, address(this), stakeUsdc);
+        // Pull the stake from the buyer, then let the CCIP router bridge it
+        require(usdc.transferFrom(msg.sender, address(this), stakeUsdc), "Gateway: USDC pull failed");
+        require(usdc.approve(address(ccipRouter), stakeUsdc), "Gateway: USDC approve failed");
 
-        // Build CCIP message — data only, pay CCIP fee in native ETH
-        CrossChainParlay memory parlay = CrossChainParlay({
-            buyer:     msg.sender,
-            markets:   markets,
-            outcomes:  outcomes,
-            stakeUsdc: stakeUsdc,
-            minPayout: minPayout
-        });
-
-        Client.EVMTokenAmount[] memory noTokens = new Client.EVMTokenAmount[](0);
-
-        Client.EVM2AnyMessage memory message = Client.EVM2AnyMessage({
-            receiver:     abi.encode(sepoliaReceiver),
-            data:         abi.encode(parlay),
-            tokenAmounts: noTokens,
-            feeToken:     address(0), // pay in native ETH
-            extraArgs:    Client._argsToBytes(
-                Client.GenericExtraArgsV2({
-                    gasLimit:               300_000,
-                    allowOutOfOrderExecution: true
-                })
-            )
-        });
+        Client.EVM2AnyMessage memory message = _buildMessage(msg.sender, markets, outcomes, stakeUsdc, minPayout);
 
         uint256 fee = ccipRouter.getFee(SEPOLIA_CHAIN_SELECTOR, message);
         require(msg.value >= fee, "Gateway: insufficient ETH for CCIP fee");
 
         messageId = ccipRouter.ccipSend{value: fee}(SEPOLIA_CHAIN_SELECTOR, message);
+
+        // Refund any ETH sent above the CCIP fee
+        if (msg.value > fee) {
+            (bool ok, ) = msg.sender.call{value: msg.value - fee}("");
+            require(ok, "Gateway: refund failed");
+        }
 
         emit ParlayRequestSent(messageId, msg.sender, stakeUsdc, markets.length);
     }
@@ -115,37 +107,41 @@ contract CCIPParlayGateway {
         uint256 stakeUsdc,
         uint256 minPayout
     ) external view returns (uint256 fee) {
+        Client.EVM2AnyMessage memory message = _buildMessage(msg.sender, markets, outcomes, stakeUsdc, minPayout);
+
+        return ccipRouter.getFee(SEPOLIA_CHAIN_SELECTOR, message);
+    }
+
+    function _buildMessage(
+        address buyer,
+        address[] calldata markets,
+        uint256[] calldata outcomes,
+        uint256 stakeUsdc,
+        uint256 minPayout
+    ) internal view returns (Client.EVM2AnyMessage memory) {
         CrossChainParlay memory parlay = CrossChainParlay({
-            buyer:     msg.sender,
+            buyer:     buyer,
             markets:   markets,
             outcomes:  outcomes,
             stakeUsdc: stakeUsdc,
             minPayout: minPayout
         });
 
-        Client.EVMTokenAmount[] memory noTokens = new Client.EVMTokenAmount[](0);
+        Client.EVMTokenAmount[] memory tokenAmounts = new Client.EVMTokenAmount[](1);
+        tokenAmounts[0] = Client.EVMTokenAmount({token: address(usdc), amount: stakeUsdc});
 
-        Client.EVM2AnyMessage memory message = Client.EVM2AnyMessage({
+        return Client.EVM2AnyMessage({
             receiver:     abi.encode(sepoliaReceiver),
             data:         abi.encode(parlay),
-            tokenAmounts: noTokens,
-            feeToken:     address(0),
+            tokenAmounts: tokenAmounts,
+            feeToken:     address(0), // pay in native ETH
             extraArgs:    Client._argsToBytes(
                 Client.GenericExtraArgsV2({
-                    gasLimit:               300_000,
+                    gasLimit:                 RECEIVER_GAS_LIMIT,
                     allowOutOfOrderExecution: true
                 })
             )
         });
-
-        return ccipRouter.getFee(SEPOLIA_CHAIN_SELECTOR, message);
-    }
-
-    /// @notice Refund locked USDC if the cross-chain call fails (manual recovery)
-    function recoverUsdc(address to, uint256 amount) external {
-        // In production, add owner-only. For hackathon simplicity: anyone can call but
-        // only after a timeout. Keeping permissionless for demo.
-        usdc.transfer(to, amount);
     }
 
     receive() external payable {}

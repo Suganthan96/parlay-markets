@@ -12,8 +12,10 @@ import {LmsrMarket} from "./LmsrMarket.sol";
 ///         from CCIPParlayGateway on Base Sepolia via Chainlink CCIP v2 and
 ///         mints a ParlayVault ticket for the cross-chain buyer.
 ///
-///         The receiver holds a USDC reserve (pre-funded by LP) to back payouts.
-///         Minting uses the existing ParlayVault.mintFromCCIP() path.
+///         Each message carries the buyer's real USDC stake (CCIP token transfer,
+///         Base Sepolia USDC → Sepolia USDC). CCIP delivers the tokens to this
+///         contract before _ccipReceive runs; the vault then pulls them in
+///         via ParlayVault.mintFromCCIP().
 contract CCIPParlayReceiver is CCIPReceiver {
 
     // ── Cross-chain message payload (must match Gateway) ─────────────
@@ -44,6 +46,7 @@ contract CCIPParlayReceiver is CCIPReceiver {
         uint256 stakeUsdc
     );
     event CrossChainParlayFailed(bytes32 indexed messageId, bytes reason);
+    event StakeRefunded(address indexed buyer, uint256 amount);
 
     // ── Constructor ──────────────────────────────────────────────────
     /// @param _ccipRouter   CCIP Router on Ethereum Sepolia (0x0BF3dE8c5D3e8A2B34D2BEeB17ABfCeBaf363A59)
@@ -83,14 +86,23 @@ contract CCIPParlayReceiver is CCIPReceiver {
             require(sender == baseSepolia_gateway, "Receiver: unknown sender");
         }
 
+        // The bridged tokens must be exactly the buyer's USDC stake
+        require(message.destTokenAmounts.length == 1, "Receiver: expected 1 token");
+        require(message.destTokenAmounts[0].token == address(usdc), "Receiver: wrong token");
+
         // Decode parlay request
         CrossChainParlay memory parlay = abi.decode(message.data, (CrossChainParlay));
+        require(message.destTokenAmounts[0].amount == parlay.stakeUsdc, "Receiver: stake mismatch");
 
         // Mint ticket on behalf of buyer — try/catch so CCIP message isn't stuck
         try this._mintTicket(message.messageId, parlay) {
             // success path handled inside _mintTicket
         } catch (bytes memory reason) {
+            // Mint failed (e.g. slippage): return the bridged stake to the buyer
+            // on Sepolia rather than leaving it stuck in this contract.
             emit CrossChainParlayFailed(message.messageId, reason);
+            usdc.transfer(parlay.buyer, parlay.stakeUsdc);
+            emit StakeRefunded(parlay.buyer, parlay.stakeUsdc);
         }
     }
 
@@ -101,7 +113,7 @@ contract CCIPParlayReceiver is CCIPReceiver {
     ) external {
         require(msg.sender == address(this), "Receiver: internal only");
 
-        // Approve vault to pull the stake USDC from this contract's reserve
+        // Approve vault to pull the bridged stake from this contract
         usdc.approve(address(vault), parlay.stakeUsdc);
 
         // Calculate price product to derive payout (same math as ParlayRouter)
@@ -130,7 +142,7 @@ contract CCIPParlayReceiver is CCIPReceiver {
 
     // ── Reserve management ───────────────────────────────────────────
 
-    /// @notice LP or admin funds this contract with USDC to back cross-chain payouts.
+    /// @notice Optional: top up this contract with USDC (stakes arrive via CCIP, so not required).
     function fundReserve(uint256 amount) external {
         usdc.transferFrom(msg.sender, address(this), amount);
     }
