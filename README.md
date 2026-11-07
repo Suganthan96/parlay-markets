@@ -2,7 +2,7 @@
 
 **The first parlay on 1inch Aqua.** Pick several sports or prediction-market outcomes, combine them into one ticket, and get paid only if every leg wins. Pricing, liquidity and settlement all happen on-chain.
 
-> ETHGlobal Mumbai 2026 hackathon project. This is a **testnet prototype (Sepolia and Base Sepolia). It is not audited.** See [Known limitations](#known-limitations).
+> ETHGlobal Mumbai 2026 hackathon project. This is a **testnet prototype (Sepolia and Base Sepolia). It is not audited.**
 
 ---
 
@@ -17,7 +17,6 @@
 7. [Deployments](#deployments)
 8. [Running it locally](#running-it-locally)
 9. [Repository layout](#repository-layout)
-10. [Known limitations](#known-limitations)
 
 ---
 
@@ -260,15 +259,3 @@ video/        Remotion showreel and video assembly scripts
 ```
 
 `parlay markets.md` is the original design spec. It is **historical**: the shipped design is simpler (the router calls `Aqua.pull` directly, and `LmsrMarket` is a standalone contract).
-
-## Known limitations
-
-This is a hackathon prototype.
-
-- **Not audited.** Testnet only.
-- **Payout funding is unfinished.** The router pulls the payout from the LP through Aqua, but `ParlayVault` pulls only the stake from the router, so a winning `claim` can fail for lack of funds in the vault. Wiring the pulled payout into the vault is the main open item.
-- **Claim button on the Tickets page** only appears for settled tickets, so the claim path is hard to reach from the UI.
-- **Access control is thin.** For example `LmsrMarket.sellBack` and `MarketResolver.requestSettlement` are open to any caller, and `buyParlay` does not check that a market address is a genuine market.
-- **Polymarket legs** are mapped onto the two deployed LMSR markets, so their on-chain prices are not tied to Polymarket odds.
-- **CRE runs in simulation.** The settlement workflow and the monitor use `cre workflow simulate`. The workflow is not deployed to a live CRE network.
-- **The CRE workflow** assumes a finished game and does not check status before settling a sports market.
