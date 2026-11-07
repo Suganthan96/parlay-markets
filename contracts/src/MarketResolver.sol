@@ -63,6 +63,19 @@ contract MarketResolver {
         _resolveMarket(market, result);
     }
 
+    /// @notice IReceiver entrypoint called by the Chainlink KeystoneForwarder:
+    ///         onReport(bytes metadata, bytes report), report = abi.encode(market, outcome).
+    function onReport(bytes calldata /*metadata*/, bytes calldata report) external {
+        require(msg.sender == cre, "Resolver: not CRE forwarder");
+        (address market, uint8 result) = abi.decode(report, (address, uint8));
+        _resolveMarket(market, result);
+    }
+
+    /// @notice ERC165: advertises IReceiver (0x805f2132) so the forwarder will deliver reports.
+    function supportsInterface(bytes4 id) external pure returns (bool) {
+        return id == 0x805f2132 || id == 0x01ffc9a7;
+    }
+
     /// @notice Resolve a market. Called by Chainlink CRE (or owner for testing).
     /// @param market  Address of the LmsrMarket to resolve.
     /// @param result  1=Home, 2=Away, 3=Draw (matches LmsrMarket.Outcome enum).
