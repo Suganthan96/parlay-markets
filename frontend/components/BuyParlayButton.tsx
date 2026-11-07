@@ -52,6 +52,7 @@ export default function BuyParlayButton({
   const rpcFixedRef = useRef(false);
 
   const { data: nextTicketIdData } = useReadContract({
+    chainId: 11155111,
     address: PARLAY_VAULT_ADDRESS,
     abi: PARLAY_VAULT_ABI,
     functionName: 'nextTicketId',

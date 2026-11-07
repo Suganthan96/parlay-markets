@@ -26,7 +26,7 @@ function LegRow({ ticketId, legIdx, ticketWon, ticketLost }: {
 
   const { data } = useReadContracts({
     contracts: [
-      { address: PARLAY_VAULT_ADDRESS, abi: PARLAY_VAULT_ABI, functionName: 'ticketLeg', args: [ticketId, legIdx] },
+      { chainId: 11155111, address: PARLAY_VAULT_ADDRESS, abi: PARLAY_VAULT_ABI, functionName: 'ticketLeg', args: [ticketId, legIdx] },
     ],
   });
   const leg        = data?.[0]?.result as [string, bigint, bigint] | undefined;
@@ -73,10 +73,10 @@ function LegRow({ ticketId, legIdx, ticketWon, ticketLost }: {
 function TicketCard({ ticketId }: { ticketId: bigint }) {
   const { data, refetch } = useReadContracts({
     contracts: [
-      { address: PARLAY_VAULT_ADDRESS, abi: PARLAY_VAULT_ABI, functionName: 'ticketStake',    args: [ticketId] },
-      { address: PARLAY_VAULT_ADDRESS, abi: PARLAY_VAULT_ABI, functionName: 'ticketPayout',   args: [ticketId] },
-      { address: PARLAY_VAULT_ADDRESS, abi: PARLAY_VAULT_ABI, functionName: 'ticketSettled',  args: [ticketId] },
-      { address: PARLAY_VAULT_ADDRESS, abi: PARLAY_VAULT_ABI, functionName: 'ticketLegCount', args: [ticketId] },
+      { chainId: 11155111, address: PARLAY_VAULT_ADDRESS, abi: PARLAY_VAULT_ABI, functionName: 'ticketStake',    args: [ticketId] },
+      { chainId: 11155111, address: PARLAY_VAULT_ADDRESS, abi: PARLAY_VAULT_ABI, functionName: 'ticketPayout',   args: [ticketId] },
+      { chainId: 11155111, address: PARLAY_VAULT_ADDRESS, abi: PARLAY_VAULT_ABI, functionName: 'ticketSettled',  args: [ticketId] },
+      { chainId: 11155111, address: PARLAY_VAULT_ADDRESS, abi: PARLAY_VAULT_ABI, functionName: 'ticketLegCount', args: [ticketId] },
     ],
     query: { refetchInterval: 15_000 },
   });
@@ -239,8 +239,8 @@ function MarketCard({ addr, index, isPending, done, onResolve }: {
 }) {
   const { data } = useReadContracts({
     contracts: [
-      { address: addr, abi: LMSR_MARKET_ABI, functionName: 'homeTeam' },
-      { address: addr, abi: LMSR_MARKET_ABI, functionName: 'awayTeam' },
+      { chainId: 11155111, address: addr, abi: LMSR_MARKET_ABI, functionName: 'homeTeam' },
+      { chainId: 11155111, address: addr, abi: LMSR_MARKET_ABI, functionName: 'awayTeam' },
     ],
   });
   const homeTeam = data?.[0]?.result as string | undefined;
@@ -312,24 +312,26 @@ export default function TicketsPage() {
   const { address, isConnected } = useAccount();
 
   const { data: nextId } = useReadContract({
+    chainId: 11155111,
     address: PARLAY_VAULT_ADDRESS,
     abi: PARLAY_VAULT_ABI,
     functionName: 'nextTicketId',
     query: { refetchInterval: 15_000 },
   });
-  const total = Number(nextId ?? 0);
+  const total = Math.max(Number(nextId ?? 1n) - 1, 0); // ticket ids start at 1
 
   const ownerCalls = Array.from({ length: total }, (_, i) => ({
+    chainId: 11155111 as const,
     address: PARLAY_VAULT_ADDRESS as `0x${string}`,
     abi: PARLAY_VAULT_ABI,
     functionName: 'ticketOwner' as const,
-    args: [BigInt(i)] as [bigint],
+    args: [BigInt(i + 1)] as [bigint],
   }));
   const { data: owners } = useReadContracts({ contracts: ownerCalls, query: { enabled: total > 0 } });
 
   const myTicketIds: bigint[] = isConnected && address && owners
     ? owners
-        .map((r, i) => ({ owner: r.result as string | undefined, id: BigInt(i) }))
+        .map((r, i) => ({ owner: r.result as string | undefined, id: BigInt(i + 1) }))
         .filter(({ owner }) => owner?.toLowerCase() === address.toLowerCase())
         .map(({ id }) => id)
     : [];

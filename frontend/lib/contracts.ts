@@ -3,8 +3,9 @@ export const SEPOLIA_CHAIN_ID      = 11155111;
 export const BASE_SEPOLIA_CHAIN_ID = 84532;
 
 // ── CCIP cross-chain contracts ────────────────────────────────────────────────
-export const CCIP_GATEWAY_ADDRESS = (process.env.NEXT_PUBLIC_CCIP_GATEWAY ?? '0x942750b61F9Bb9CFDd7E77c5C8484336f9D82b51') as `0x${string}`;
-export const BASE_USDC_ADDRESS    = (process.env.NEXT_PUBLIC_BASE_USDC    ?? '0xd1eAA1d011778c9Daf93c66B20062398b50664CD') as `0x${string}`;
+export const CCIP_GATEWAY_ADDRESS = (process.env.NEXT_PUBLIC_CCIP_GATEWAY ?? '0x99045AC039c7828C4597C3463944EFCE4b2f7611') as `0x${string}`;
+// Circle USDC on Base Sepolia — bridged to Circle USDC on Sepolia (0x1c7D4B19…7238) by CCIP
+export const BASE_USDC_ADDRESS    = (process.env.NEXT_PUBLIC_BASE_USDC    ?? '0x036CbD53842c5426634e7929541eC2318f3dCF7e') as `0x${string}`;
 
 export const CCIP_GATEWAY_ABI = [
   {
@@ -69,9 +70,9 @@ export const AQUA_ABI = [
   },
 ] as const;
 // AquaParlayRouter — integrates Aqua.pull() for end-to-end LP→user flow
-export const AQUA_PARLAY_ROUTER_ADDRESS = (process.env.NEXT_PUBLIC_AQUA_ROUTER ?? '0x169c3A8efC5E324f0BEb9A95A58D2C5b20971F2c') as `0x${string}`;
+export const AQUA_PARLAY_ROUTER_ADDRESS = (process.env.NEXT_PUBLIC_AQUA_ROUTER ?? '0xE4EeF51383a53aFFd8d2C6661FfFcCF6578EAb0c') as `0x${string}`;
 // Pre-computed strategy hash for [MARKET_A, MARKET_B]
-export const DEFAULT_STRATEGY_HASH = (process.env.NEXT_PUBLIC_STRATEGY_HASH ?? '0x98c1726b31c4183a70e8f31e637ea12290fa9e0910ce5a0f6874ba44e9f2d87f') as `0x${string}`;
+export const DEFAULT_STRATEGY_HASH = (process.env.NEXT_PUBLIC_STRATEGY_HASH ?? '0xb28bcaf3495f18c555df8c3599834584fe338a9d2bd813f699620f28489593b9') as `0x${string}`;
 
 // Chainlink CRE Forwarder on Sepolia
 export const CRE_FORWARDER_ADDRESS = '0xf8344cfd5c43616a4366c34e3eee75af79a74482' as `0x${string}`;

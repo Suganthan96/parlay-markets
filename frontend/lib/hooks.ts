@@ -18,6 +18,7 @@ const WAD = 1_000_000_000_000_000_000n; // 1e18
 
 export function useUsdcBalance(address?: `0x${string}`) {
   const { data, isLoading } = useReadContract({
+    chainId: 11155111,
     address: MOCK_USDC_ADDRESS,
     abi: ERC20_ABI,
     functionName: 'balanceOf',
@@ -33,6 +34,7 @@ export function useUsdcBalance(address?: `0x${string}`) {
 
 export function useUsdcAllowance(owner?: `0x${string}`, spender?: `0x${string}`) {
   const { data } = useReadContract({
+    chainId: 11155111,
     address: MOCK_USDC_ADDRESS,
     abi: ERC20_ABI,
     functionName: 'allowance',
@@ -72,6 +74,7 @@ export function useMintUsdc() {
 
 export function useMarketPrices(marketAddress?: `0x${string}`) {
   const { data, isLoading, refetch } = useReadContract({
+    chainId: 11155111,
     address: marketAddress,
     abi: LMSR_MARKET_ABI,
     functionName: 'prices',
@@ -84,6 +87,7 @@ export function useMarketPrices(marketAddress?: `0x${string}`) {
 
 export function useMarketResult(marketAddress?: `0x${string}`) {
   const { data } = useReadContract({
+    chainId: 11155111,
     address: marketAddress,
     abi: LMSR_MARKET_ABI,
     functionName: 'result',
@@ -97,11 +101,11 @@ export function useMarketResult(marketAddress?: `0x${string}`) {
 export function useMarketInfo(marketAddress?: `0x${string}`) {
   const { data } = useReadContracts({
     contracts: [
-      { address: marketAddress, abi: LMSR_MARKET_ABI, functionName: 'homeTeam' },
-      { address: marketAddress, abi: LMSR_MARKET_ABI, functionName: 'awayTeam' },
-      { address: marketAddress, abi: LMSR_MARKET_ABI, functionName: 'kickoff' },
-      { address: marketAddress, abi: LMSR_MARKET_ABI, functionName: 'result' },
-      { address: marketAddress, abi: LMSR_MARKET_ABI, functionName: 'prices' },
+      { chainId: 11155111, address: marketAddress, abi: LMSR_MARKET_ABI, functionName: 'homeTeam' },
+      { chainId: 11155111, address: marketAddress, abi: LMSR_MARKET_ABI, functionName: 'awayTeam' },
+      { chainId: 11155111, address: marketAddress, abi: LMSR_MARKET_ABI, functionName: 'kickoff' },
+      { chainId: 11155111, address: marketAddress, abi: LMSR_MARKET_ABI, functionName: 'result' },
+      { chainId: 11155111, address: marketAddress, abi: LMSR_MARKET_ABI, functionName: 'prices' },
     ],
     query: { enabled: !!marketAddress },
   });
@@ -151,6 +155,7 @@ export function useQuoteParlay(
 ) {
   const enabled = markets.length > 0 && stakeUsdc > 0 && markets.length === outcomes.length;
   const { data, isLoading } = useReadContract({
+    chainId: 11155111,
     address: PARLAY_ROUTER_ADDRESS,
     abi: PARLAY_ROUTER_ABI,
     functionName: 'quoteParlay',
@@ -191,11 +196,11 @@ export function useBuyParlay() {
 export function useTicket(ticketId: bigint | undefined) {
   const { data } = useReadContracts({
     contracts: ticketId ? [
-      { address: PARLAY_VAULT_ADDRESS, abi: PARLAY_VAULT_ABI, functionName: 'ticketOwner',    args: [ticketId] },
-      { address: PARLAY_VAULT_ADDRESS, abi: PARLAY_VAULT_ABI, functionName: 'ticketStake',    args: [ticketId] },
-      { address: PARLAY_VAULT_ADDRESS, abi: PARLAY_VAULT_ABI, functionName: 'ticketPayout',   args: [ticketId] },
-      { address: PARLAY_VAULT_ADDRESS, abi: PARLAY_VAULT_ABI, functionName: 'ticketSettled',  args: [ticketId] },
-      { address: PARLAY_VAULT_ADDRESS, abi: PARLAY_VAULT_ABI, functionName: 'ticketLegCount', args: [ticketId] },
+      { chainId: 11155111, address: PARLAY_VAULT_ADDRESS, abi: PARLAY_VAULT_ABI, functionName: 'ticketOwner',    args: [ticketId] },
+      { chainId: 11155111, address: PARLAY_VAULT_ADDRESS, abi: PARLAY_VAULT_ABI, functionName: 'ticketStake',    args: [ticketId] },
+      { chainId: 11155111, address: PARLAY_VAULT_ADDRESS, abi: PARLAY_VAULT_ABI, functionName: 'ticketPayout',   args: [ticketId] },
+      { chainId: 11155111, address: PARLAY_VAULT_ADDRESS, abi: PARLAY_VAULT_ABI, functionName: 'ticketSettled',  args: [ticketId] },
+      { chainId: 11155111, address: PARLAY_VAULT_ADDRESS, abi: PARLAY_VAULT_ABI, functionName: 'ticketLegCount', args: [ticketId] },
     ] : [],
     query: { enabled: !!ticketId },
   });
@@ -233,6 +238,7 @@ export function useClaim() {
 
 export function useReadCRE() {
   const { data: creAddress } = useReadContract({
+    chainId: 11155111,
     address: MARKET_RESOLVER_ADDRESS,
     abi: MARKET_RESOLVER_ABI,
     functionName: 'cre',
@@ -288,6 +294,7 @@ export function useResolveMarket() {
 
 export function useAquaAllowance(owner?: `0x${string}`) {
   const { data } = useReadContract({
+    chainId: 11155111,
     address: MOCK_USDC_ADDRESS,
     abi: ERC20_ABI,
     functionName: 'allowance',

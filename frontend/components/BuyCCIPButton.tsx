@@ -23,7 +23,7 @@ interface Props {
 }
 
 const BASE_EXPLORER = 'https://sepolia.basescan.org/tx/';
-const SEP_EXPLORER  = 'https://ccip.chain.link';
+const SEP_EXPLORER  = 'https://ccip.chain.link/tx/';
 
 export default function BuyCCIPButton({
   markets, outcomeIdxs, stakeUsdc, hasOnChain,
@@ -201,14 +201,14 @@ export default function BuyCCIPButton({
       {sent && (
         <div style={{ padding: '12px 14px', background: '#eff2ff', border: '1px solid #c7d2fe', borderRadius: 2 }}>
           <div style={{ fontWeight: 800, fontSize: 12, color: '#2151f5', marginBottom: 4 }}>
-            ■ CCIP message sent — ticket mints on Ethereum Sepolia in ~2–3 min
+            ■ CCIP message sent — USDC + parlay bridged to Ethereum Sepolia; ticket mints in ~2–3 min
           </div>
           {sendTx && (
             <div style={{ fontSize: 11, display: 'flex', gap: 12 }}>
               <a href={`${BASE_EXPLORER}${sendTx}`} target="_blank" rel="noreferrer" style={{ color: '#2151f5', fontFamily: 'monospace' }}>
                 Base tx: {sendTx.slice(0, 10)}…{sendTx.slice(-6)} ↗
               </a>
-              <a href={SEP_EXPLORER} target="_blank" rel="noreferrer" style={{ color: '#2151f5' }}>
+              <a href={`${SEP_EXPLORER}${sendTx}`} target="_blank" rel="noreferrer" style={{ color: '#2151f5' }}>
                 Track on CCIP Explorer ↗
               </a>
             </div>
