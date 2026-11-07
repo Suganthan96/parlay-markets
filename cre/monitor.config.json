@@ -1,0 +1,7 @@
+{
+  "intervalSeconds": 30,
+  "resolver": "0x79AcDa877B38570d4A2e7Ee84dC5AA60E6AeE934",
+  "target": "staging-settings",
+  "markets": [],
+  "fromBlock": 12080000
+}
